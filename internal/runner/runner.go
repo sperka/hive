@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/mdipanjan/hive/internal/state"
 )
 
 type Options struct {
-	Name string
-	Tool string
-	Path string
+	Name    string
+	StateID string
+	Tool    string
+	Path    string
 }
 
 func Run(opts Options) error {
@@ -25,9 +27,12 @@ func Run(opts Options) error {
 	if opts.Path == "" {
 		return fmt.Errorf("path is required")
 	}
+	if opts.StateID == "" {
+		opts.StateID = opts.Name
+	}
 
 	if err := os.Chdir(opts.Path); err != nil {
-		markFailed(opts.Name, time.Now(), 1)
+		markFailed(opts.StateID, time.Now(), 1)
 		return err
 	}
 
@@ -40,7 +45,7 @@ func Run(opts Options) error {
 
 func runOnce(opts Options) error {
 	startedAt := time.Now().UTC()
-	if err := state.WriteRuntime(opts.Name, state.Runtime{State: state.StateRunning, StartedAt: startedAt}); err != nil {
+	if err := state.WriteRuntime(opts.StateID, state.Runtime{State: state.StateRunning, StartedAt: startedAt}); err != nil {
 		return err
 	}
 
@@ -52,7 +57,7 @@ func runOnce(opts Options) error {
 		runtimeState = state.StateFailed
 	}
 
-	writeErr := state.WriteRuntime(opts.Name, state.Runtime{
+	writeErr := state.WriteRuntime(opts.StateID, state.Runtime{
 		State:     runtimeState,
 		StartedAt: startedAt,
 		EndedAt:   &endedAt,
@@ -68,7 +73,7 @@ func runOnce(opts Options) error {
 func runEditor(opts Options) error {
 	for {
 		startedAt := time.Now().UTC()
-		if err := state.WriteRuntime(opts.Name, state.Runtime{State: state.StateRunning, StartedAt: startedAt}); err != nil {
+		if err := state.WriteRuntime(opts.StateID, state.Runtime{State: state.StateRunning, StartedAt: startedAt}); err != nil {
 			return err
 		}
 
@@ -80,7 +85,7 @@ func runEditor(opts Options) error {
 			runtimeState = state.StateFailed
 		}
 
-		if writeErr := state.WriteRuntime(opts.Name, state.Runtime{
+		if writeErr := state.WriteRuntime(opts.StateID, state.Runtime{
 			State:     runtimeState,
 			StartedAt: startedAt,
 			EndedAt:   &endedAt,
@@ -125,8 +130,20 @@ func runShell() error {
 	return err
 }
 
-func detachClient(name string) {
-	_ = exec.Command("tmux", "detach-client", "-s", name).Run()
+func detachClient(name string) error {
+	if pane := os.Getenv("TMUX_PANE"); pane != "" {
+		// Resolve the owning session after the editor exits, since its name may
+		// have changed while the editor was running.
+		output, err := exec.Command("tmux", "display-message", "-p", "-t", pane, "#{session_id}").Output()
+		if err != nil {
+			return err
+		}
+		name = strings.TrimSpace(string(output))
+		if name == "" {
+			return fmt.Errorf("could not resolve session for pane %q", pane)
+		}
+	}
+	return exec.Command("tmux", "detach-client", "-s", name).Run()
 }
 
 func markFailed(name string, startedAt time.Time, exitCode int) {

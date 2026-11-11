@@ -34,7 +34,12 @@ type Runtime struct {
 }
 
 func WriteMetadata(meta Metadata) error {
-	return writeJSON(metadataPath(meta.Name), meta)
+	return WriteMetadataForID(meta.Name, meta)
+}
+
+// WriteMetadataForID keeps storage independent of a session's editable name.
+func WriteMetadataForID(id string, meta Metadata) error {
+	return writeJSON(metadataPath(id), meta)
 }
 
 func ReadMetadata(name string) (Metadata, error) {

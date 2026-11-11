@@ -20,6 +20,7 @@ func RenderHelpPopup() string {
 		{"n", "Create new session"},
 		{"enter", "Attach to session"},
 		{"d", "Delete session"},
+		{"r", "Rename session"},
 		{"t", "Switch theme"},
 		{"↑/k", "Move up"},
 		{"↓/j", "Move down"},

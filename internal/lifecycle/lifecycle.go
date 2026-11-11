@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/mdipanjan/hive/internal/session"
 	"github.com/mdipanjan/hive/internal/tmux"
@@ -44,6 +45,9 @@ func (s Service) Create(req CreateRequest) (string, error) {
 	if name == "" {
 		name = "hive-" + s.generateID(6)
 	}
+	if err := validateName(name); err != nil {
+		return "", err
+	}
 
 	path, err := s.resolvePath(req.Path)
 	if err != nil {
@@ -59,6 +63,23 @@ func (s Service) AttachCmd(name string) *exec.Cmd {
 
 func (s Service) Delete(name string) error {
 	return tmux.Kill(name)
+}
+
+func (s Service) Rename(name, newName string) error {
+	if err := validateName(newName); err != nil {
+		return err
+	}
+	return tmux.Rename(name, newName)
+}
+
+func validateName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("session name cannot be empty")
+	}
+	if strings.ContainsAny(name, ".:/\\|") || strings.ContainsFunc(name, unicode.IsControl) {
+		return fmt.Errorf("session name cannot contain dots, colons, slashes, pipes, or control characters")
+	}
+	return nil
 }
 
 func (s Service) resolvePath(value string) (string, error) {

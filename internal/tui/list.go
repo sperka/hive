@@ -18,7 +18,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = max(0, m.cursor-1)
 
 	case "down", "j":
-		m.cursor = min(len(m.sessions)-1, m.cursor+1)
+		m.cursor = max(0, min(len(m.sessions)-1, m.cursor+1))
 
 	case "enter":
 		if len(m.sessions) > 0 {
@@ -41,6 +41,9 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.app.ConfirmDelete()
 			m.deleteButton = 1
 		}
+
+	case "r":
+		return m.startRename()
 
 	case "t":
 		theme := styles.NextTheme()
