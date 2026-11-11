@@ -18,11 +18,41 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: go.mod
+
+      - name: Test
+        run: |
+          go test -race -timeout 0 ./...
+          go vet ./...
+          bash -n install.sh
+          shellcheck install.sh scripts/test-install.sh
+          bash scripts/test-install.sh
+
+      - name: Prepare release notes
+        run: |
+          test "$GITHUB_REF_NAME" = "$(awk '/^## / { print "v" $2; exit }' CHANGELOG.md)"
+          awk '/^## / { if (section++) exit; next } section { print }' \
+            CHANGELOG.md > "$RUNNER_TEMP/hive-release-notes.md"
 
       - uses: goreleaser/goreleaser-action@v6
         with:
-          version: latest
-          args: release --clean
+          version: v2.20.1
+          args: release --clean --release-notes=${{ runner.temp }}/hive-release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify draft assets and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          artifact_dir="$RUNNER_TEMP/hive-release"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$artifact_dir"
+          cd "$artifact_dir"
+          sha256sum -c checksums.txt
+          for archive in hive_{linux,darwin}_{amd64,arm64}.tar.gz; do
+            tar -tzf "$archive" | grep -qx hive
+          done
+          tar -xzf hive_linux_amd64.tar.gz hive
+          test "$(./hive --version)" = "hive ${GITHUB_REF_NAME#v}"
+          ./hive update --help
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

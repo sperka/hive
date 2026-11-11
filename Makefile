@@ -1,4 +1,4 @@
-VERSION := 0.1.0
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
 BUILD_FLAGS := -ldflags "-s -w -X main.Version=$(VERSION)"
 CGO_FLAGS := CGO_CFLAGS="-w"
 

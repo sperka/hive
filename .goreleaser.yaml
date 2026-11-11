@@ -1,8 +1,6 @@
-project_name: hive
+version: 2
 
-before:
-  hooks:
-    - go mod tidy
+project_name: hive
 
 builds:
   - main: .
@@ -19,7 +17,7 @@ builds:
       - -s -w -X main.Version={{.Version}}
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
@@ -30,6 +28,7 @@ changelog:
   sort: asc
 
 release:
+  draft: true
   github:
-    owner: mdipanjan
+    owner: sperka
     name: hive

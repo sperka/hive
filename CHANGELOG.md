@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.0
+
+- Added `hive update` and `hive update --check` using `sperka/hive` releases.
+- Verify release checksums and atomically replace the executable during updates.
+- Publish Linux and macOS binaries for amd64 and arm64 from this fork.
+- Updated the installer with checksum verification, custom install directories,
+  and support for installing a specific release with `HIVE_VERSION`.
+- Added configurable tool choices and custom executable input.
+- Added session renaming while preserving running processes and session state.
+- Added the `prefix+h` session switcher popup and `hive switch` command.
+
 ## 0.1.2
 
 - Added runtime state tracking for Hive sessions.

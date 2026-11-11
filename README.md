@@ -2,7 +2,7 @@
 
 A lightweight TUI for managing tmux sessions, optimized for AI coding agents.
 
-![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)
+![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8?style=flat&logo=go)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -38,10 +38,24 @@ Managing multiple AI coding agents (Claude, Pi, Cursor) across projects gets mes
 **Works on:** macOS, Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mdipanjan/hive/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh | bash
 ```
 
 Then run: `hive`
+
+The installer downloads a release from `sperka/hive`, verifies its SHA-256
+checksum, and installs to `/usr/local/bin` (using sudo if needed). Rerun it to
+upgrade an older Hive installation that does not yet have `hive update`.
+
+To install without sudo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh |
+  HIVE_INSTALL_DIR="$HOME/.local/bin" bash
+```
+
+Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.2.0` on the `bash`
+command to install a particular release instead of the latest stable version.
 
 <details>
 <summary>Other install methods</summary>
@@ -49,17 +63,15 @@ Then run: `hive`
 **From Source**
 
 ```bash
-git clone https://github.com/mdipanjan/hive.git
+git clone https://github.com/sperka/hive.git
 cd hive
-make build
+mise install
+mise exec -- make build
 sudo mv hive /usr/local/bin/
 ```
 
-**Go**
-
-```bash
-go install github.com/mdipanjan/hive@latest
-```
+The Go module retains the upstream import path. Use the checkout above to build
+this fork; `go install github.com/mdipanjan/hive@latest` installs upstream Hive.
 
 </details>
 
@@ -249,6 +261,8 @@ hive/
 ```
 
 ## Contributing
+
+See [RELEASING.md](RELEASING.md) for versioning, release validation, and rollback.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing`)
