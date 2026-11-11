@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/shirou/gopsutil/v3 v3.24.5
+	golang.org/x/mod v0.29.0
 	golang.org/x/term v0.40.0
 )
 

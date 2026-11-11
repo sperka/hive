@@ -23,6 +23,12 @@ func main() {
 		case "-h", "--help", "help":
 			printHelp()
 			return
+		case "update":
+			if err := cli.Update(os.Args[2:], Version); err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				os.Exit(1)
+			}
+			return
 		}
 
 		if cli.Run(os.Args) {
@@ -60,6 +66,7 @@ Commands:
   hive attach <name>                Attach to a session
   hive switch                       Open compact session switcher
   hive delete <name>                Delete a session
+  hive update [--check]             Update from sperka/hive releases
 
 Aliases:
   list   → ls

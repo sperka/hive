@@ -63,6 +63,23 @@ go install github.com/mdipanjan/hive@latest
 
 </details>
 
+## Updating
+
+```bash
+hive update --check  # Check the latest stable release
+hive update          # Download, verify, and install it
+```
+
+Updates come from [sperka/hive releases](https://github.com/sperka/hive/releases).
+Hive verifies the archive's SHA-256 checksum and atomically replaces its own
+executable, including when launched through a symlink. Config and tmux sessions
+are preserved. Reopen Hive after updating. Equal or newer installed versions are
+left in place; development builds can update to the latest stable release.
+
+The executable's directory must be writable. For a root-owned installation, run
+`sudo "$(command -v hive)" update`, or install in a user-writable directory.
+Older versions without `hive update` need the installer once to gain the command.
+
 ## Usage
 
 ### TUI Mode
