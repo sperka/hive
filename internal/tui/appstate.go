@@ -12,6 +12,7 @@ const (
 	OverlayHelp          Overlay = "help"
 	OverlaySearch        Overlay = "search"
 	OverlayDeleteConfirm Overlay = "delete-confirm"
+	OverlayRename        Overlay = "rename"
 	OverlayPathPicker    Overlay = "path-picker"
 )
 
@@ -29,7 +30,8 @@ func (s AppState) Searching() bool   { return s.Overlay == OverlaySearch }
 func (s AppState) ConfirmingDelete() bool {
 	return s.Overlay == OverlayDeleteConfirm
 }
-func (s AppState) PickingPath() bool { return s.Overlay == OverlayPathPicker }
+func (s AppState) PickingPath() bool     { return s.Overlay == OverlayPathPicker }
+func (s AppState) RenamingSession() bool { return s.Overlay == OverlayRename }
 func (s AppState) CreatingSession() bool {
 	return s.Screen == ScreenNew && s.Overlay == OverlayNone
 }
@@ -37,6 +39,7 @@ func (s AppState) CreatingSession() bool {
 func (s *AppState) ShowHelp()            { s.Overlay = OverlayHelp }
 func (s *AppState) Search()              { s.Overlay = OverlaySearch }
 func (s *AppState) ConfirmDelete()       { s.Overlay = OverlayDeleteConfirm }
+func (s *AppState) RenameSession()       { s.Overlay = OverlayRename }
 func (s *AppState) PickPath()            { s.Overlay = OverlayPathPicker }
 func (s *AppState) CloseOverlay()        { s.Overlay = OverlayNone }
 func (s *AppState) StartNewSession()     { s.Screen, s.Overlay = ScreenNew, OverlayNone }

@@ -73,6 +73,7 @@ TUI Keys:
   enter     Attach to session
   prefix+h  Open switcher from inside tmux
   d         Delete session
+  r         Rename session
   /         Search sessions
   t         Switch theme
   ?         Help

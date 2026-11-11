@@ -79,10 +79,15 @@ hive
 | `enter` | Attach to session |
 | `prefix + h` | Open session switcher (from inside any session) |
 | `d`     | Delete session    |
+| `r`     | Rename session    |
 | `/`     | Search sessions   |
 | `t`     | Cycle themes      |
 | `?`     | Help              |
 | `q`     | Quit              |
+
+To rename a session, select it and press `r`. Edit the prefilled name, then press
+`enter` to save or `esc` to cancel. The session keeps running, and Hive preserves
+its tool, working directory, creation time, and runtime status.
 
 ### CLI Mode (AI-Agent Compatible)
 

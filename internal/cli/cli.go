@@ -155,11 +155,12 @@ func runSwitch(args []string) bool {
 func runSession(args []string) bool {
 	fs := flag.NewFlagSet("run-session", flag.ExitOnError)
 	name := fs.String("name", "", "Session name")
+	stateID := fs.String("state-id", "", "Stable session state ID (defaults to name)")
 	tool := fs.String("tool", "", "Tool to run")
 	path := fs.String("path", "", "Working directory")
 	fs.Parse(args)
 
-	if err := runner.Run(runner.Options{Name: *name, Tool: *tool, Path: *path}); err != nil {
+	if err := runner.Run(runner.Options{Name: *name, StateID: *stateID, Tool: *tool, Path: *path}); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

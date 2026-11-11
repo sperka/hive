@@ -1,6 +1,9 @@
 package lifecycle
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestIsBuiltinToolRecognizesSupportedLaunchProfiles(t *testing.T) {
 	for _, tool := range []string{"pi", "claude", "nvim", "bash"} {
@@ -37,5 +40,22 @@ func TestResolvePathUsesWorkingDirForEmptyOrDot(t *testing.T) {
 		if got != "/work/project" {
 			t.Fatalf("resolvePath(%q) = %q", value, got)
 		}
+	}
+}
+
+func TestRenameRejectsInvalidNamesBeforeTouchingTmux(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, name := range []string{"", "   ", ".", "../escape", "a:b", "a.b", "a/b", "a\\b", "a|b", "a\nb"} {
+		err := New().Rename("work", name)
+		if err == nil || !strings.Contains(err.Error(), "session name cannot") {
+			t.Fatalf("Rename(%q) = %v, want validation error", name, err)
+		}
+	}
+}
+
+func TestCreateRejectsNamesTmuxWouldNormalize(t *testing.T) {
+	_, err := New().Create(CreateRequest{Name: "a.b", Tool: "bash"})
+	if err == nil || !strings.Contains(err.Error(), "session name cannot") {
+		t.Fatalf("Create() = %v, want validation error", err)
 	}
 }

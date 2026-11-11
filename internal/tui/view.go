@@ -18,6 +18,9 @@ func RenderView(m Model) string {
 	if m.app.ConfirmingDelete() {
 		return renderDeleteConfirmView(m)
 	}
+	if m.app.RenamingSession() {
+		return renderRenameView(m)
+	}
 	if m.app.CreatingSession() {
 		return renderNewView(m)
 	}
@@ -25,6 +28,24 @@ func RenderView(m Model) string {
 		return renderSearchView(m)
 	}
 	return renderListView(m)
+}
+
+func renderRenameView(m Model) string {
+	content := styles.PanelTitle.Render("RENAME SESSION") + "\n\n"
+	content += styles.Label.Render("NAME") + m.renameInput.View()
+	if m.err != nil {
+		content += "\n\n" + styles.Normal.Render("Error: "+m.err.Error())
+	}
+	popup := styles.Panel.Width(56).Padding(1, 2).Render(content)
+	help := components.RenderHelpBar([]components.HelpItem{
+		{Key: "enter", Desc: "rename"},
+		{Key: "esc", Desc: "cancel"},
+	})
+	if m.width > 0 && m.height > 0 {
+		popup = lipgloss.Place(m.width, m.height-2, lipgloss.Center, lipgloss.Center, popup)
+		help = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, help)
+	}
+	return popup + "\n" + help
 }
 
 func renderDeleteConfirmView(m Model) string {
@@ -138,6 +159,9 @@ func renderListView(m Model) string {
 
 	activity := components.RenderActivity(contentWidth, m.cpuUsageHistory)
 	fullContent := lipgloss.JoinVertical(lipgloss.Right, mainContent, "", activity)
+	if m.err != nil {
+		fullContent += "\n" + styles.Normal.Render("Error: "+m.err.Error())
+	}
 
 	boxStyle := styles.OuterBox.Width(boxWidth)
 	box := boxStyle.Render(fullContent)

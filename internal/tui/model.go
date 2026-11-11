@@ -33,6 +33,8 @@ type Model struct {
 	searchResults   []int
 	searchCursor    int
 	deleteButton    int
+	renameInput     textinput.Model
+	renameName      string
 	cpuUsageHistory []int
 	err             error
 }
@@ -140,6 +142,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.app.ConfirmingDelete() {
 			return m.updateDeleteConfirm(msg)
 		}
+		if m.app.RenamingSession() {
+			return m.updateRename(msg)
+		}
 		if m.app.CreatingSession() {
 			return m.updateNewForm(msg)
 		}
@@ -152,6 +157,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cpuUsageHistory = m.cpuUsageHistory[1:]
 		}
 		return m, cpuTick()
+	}
+	if m.app.RenamingSession() {
+		var cmd tea.Cmd
+		m.renameInput, cmd = m.renameInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
