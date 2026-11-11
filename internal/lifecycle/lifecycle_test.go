@@ -1,28 +1,43 @@
 package lifecycle
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
-func TestIsBuiltinToolRecognizesSupportedLaunchProfiles(t *testing.T) {
-	for _, tool := range []string{"pi", "claude", "nvim", "bash"} {
-		if !IsBuiltinTool(tool) {
-			t.Fatalf("expected %q to be builtin", tool)
-		}
-	}
-
-	if IsBuiltinTool("cursor") {
-		t.Fatal("expected unknown tool to be rejected")
-	}
-}
-
-func TestCreateRejectsUnknownToolBeforeTouchingTmux(t *testing.T) {
+func TestCreateRejectsMissingExecutableBeforeTouchingTmux(t *testing.T) {
 	svc := Service{
 		generateID: func(int) string { return "fixed" },
 		workingDir: func() (string, error) { return "/tmp", nil },
 	}
 
-	_, err := svc.Create(CreateRequest{Tool: "cursor"})
-	if err == nil {
-		t.Fatal("expected unknown tool error")
+	t.Setenv("PATH", t.TempDir())
+	_, err := svc.Create(CreateRequest{Tool: "missing-tool"})
+	if err == nil || !strings.Contains(err.Error(), "not an executable") {
+		t.Fatalf("expected executable error, got %v", err)
+	}
+}
+
+func TestCreateAcceptsCustomExecutable(t *testing.T) {
+	bin := t.TempDir()
+	t.Setenv("PATH", bin)
+	t.Setenv("HIVE_STATE_DIR", t.TempDir())
+	for _, name := range []string{"my-agent", "tmux"} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nexit 0\n"), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc := New()
+	for _, tool := range []string{"my-agent", filepath.Join(bin, "my-agent")} {
+		name, err := svc.Create(CreateRequest{Name: "custom", Tool: tool, Path: bin})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if name != "custom" {
+			t.Fatalf("name = %q, want custom", name)
+		}
 	}
 }
 

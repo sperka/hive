@@ -12,8 +12,6 @@ import (
 	"github.com/mdipanjan/hive/internal/tmux"
 )
 
-var BuiltinTools = []string{"pi", "claude", "nvim", "bash"}
-
 type CreateRequest struct {
 	Name string
 	Tool string
@@ -38,8 +36,8 @@ func (s Service) Create(req CreateRequest) (string, error) {
 	if tool == "" {
 		tool = "bash"
 	}
-	if !IsBuiltinTool(tool) {
-		return "", fmt.Errorf("unknown tool %q", tool)
+	if _, err := exec.LookPath(tool); err != nil {
+		return "", fmt.Errorf("tool %q is not an executable on PATH or an executable path: %w", tool, err)
 	}
 
 	name := req.Name
@@ -75,15 +73,6 @@ func (s Service) resolvePath(value string) (string, error) {
 		value = filepath.Join(home, value[2:])
 	}
 	return filepath.Abs(value)
-}
-
-func IsBuiltinTool(tool string) bool {
-	for _, candidate := range BuiltinTools {
-		if tool == candidate {
-			return true
-		}
-	}
-	return false
 }
 
 func randomID(length int) string {

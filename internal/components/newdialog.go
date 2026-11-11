@@ -7,11 +7,13 @@ import (
 )
 
 type FormData struct {
-	Tool   int
-	Path   string
-	Name   string
-	Focus  int
-	Button int
+	Tool       int
+	CustomTool string
+	Path       string
+	Name       string
+	Focus      int
+	Button     int
+	Error      string
 }
 
 func RenderNewDialog(tools []string, form FormData) string {
@@ -21,11 +23,15 @@ func RenderNewDialog(tools []string, form FormData) string {
 	content.WriteString("\n\n")
 
 	toolLabel := styles.Label.Render("TOOL")
-	toolValue := renderToolSelector(tools, form.Tool, form.Focus == 0)
+	choices := append(append([]string{}, tools...), "Custom...")
+	toolValue := renderToolSelector(choices, form.Tool, form.Focus == 0)
 	content.WriteString(toolLabel + toolValue + "\n\n")
+	if form.Tool == len(tools) {
+		content.WriteString(styles.Label.Render("CUSTOM") + form.CustomTool + "\n\n")
+	}
 
 	pathLabel := styles.Label.Render("PATH")
-	pathValue := RenderTextInput(form.Path, form.Focus == 1, 30)
+	pathValue := RenderTextInput(form.Path, form.Focus == 2, 30)
 	content.WriteString(pathLabel + pathValue + "\n\n")
 
 	nameLabel := styles.Label.Render("NAME")
@@ -33,10 +39,13 @@ func RenderNewDialog(tools []string, form FormData) string {
 	if namePlaceholder == "" {
 		namePlaceholder = "(auto-generate)"
 	}
-	nameValue := RenderTextInput(namePlaceholder, form.Focus == 2, 30)
+	nameValue := RenderTextInput(namePlaceholder, form.Focus == 3, 30)
 	content.WriteString(nameLabel + nameValue + "\n\n")
 
-	content.WriteString(RenderButtons([]string{"Create", "Cancel"}, form.Button, form.Focus == 3, 70))
+	if form.Error != "" {
+		content.WriteString(styles.Normal.Render("Error: "+form.Error) + "\n\n")
+	}
+	content.WriteString(RenderButtons([]string{"Create", "Cancel"}, form.Button, form.Focus == 4, 70))
 
 	dialogStyle := styles.Panel.Width(70).Padding(1, 2)
 	return dialogStyle.Render(content.String())

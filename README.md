@@ -168,9 +168,21 @@ Config file: `~/.config/hive/config.json`
 
 ```json
 {
-  "theme": "tokyo-night"
+  "theme": "tokyo-night",
+  "tool": ["pi", "claude", "codex", "zsh"]
 }
 ```
+
+Hive creates this file with defaults if it does not exist. Existing configs without
+`tool` use the default choices above. Edit the array to set the choices and their
+order; an empty array leaves only custom input. The first choice is selected when
+you open the new-session form.
+
+Press `n`, then use left/right to choose a tool. Select `Custom...` and press `tab`,
+or just start typing in the tool selector, to enter any executable name or path.
+The tool must be installed and executable. Arguments and shell expressions are
+not supported in this field. The CLI's `--tool` flag accepts the same executables;
+`nvim` and `vim` retain the editor split layout.
 
 ## Themes
 

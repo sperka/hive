@@ -31,6 +31,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "n":
+		m.err = nil
 		m.app.StartNewSession()
 		m.form = newForm()
 		m.form.FilePicker = newFilePicker()
@@ -44,7 +45,9 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "t":
 		theme := styles.NextTheme()
 		logger.Log.Debug("theme switched", "theme", theme.Name)
-		config.Save(config.Config{Theme: theme.Key})
+		cfg := config.Load()
+		cfg.Theme = theme.Key
+		m.err = config.Save(cfg)
 
 	case "?":
 		m.app.ShowHelp()

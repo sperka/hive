@@ -153,16 +153,21 @@ func renderListView(m Model) string {
 
 func renderNewView(m Model) string {
 	formData := components.FormData{
-		Tool:   m.form.Tool,
-		Path:   m.form.Path,
-		Name:   m.form.Name,
-		Focus:  m.form.Focus,
-		Button: m.form.Button,
+		Tool:       m.form.Tool,
+		CustomTool: m.form.CustomTool.View(),
+		Path:       m.form.Path,
+		Name:       m.form.Name,
+		Focus:      m.form.Focus,
+		Button:     m.form.Button,
+	}
+	if m.err != nil {
+		formData.Error = m.err.Error()
 	}
 
-	dialog := components.RenderNewDialog(Tools, formData)
+	dialog := components.RenderNewDialog(m.form.Tools, formData)
 	help := components.RenderHelpBar([]components.HelpItem{
 		{Key: "tab", Desc: "next"},
+		{Key: "type", Desc: "custom tool"},
 		{Key: "←→", Desc: "select"},
 		{Key: "enter", Desc: "confirm"},
 		{Key: "esc", Desc: "cancel"},

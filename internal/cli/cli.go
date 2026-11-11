@@ -83,7 +83,7 @@ func runList(args []string) bool {
 
 func runCreate(args []string) bool {
 	fs := flag.NewFlagSet("create", flag.ExitOnError)
-	tool := fs.String("tool", "bash", "Tool to use (pi, claude, nvim, bash)")
+	tool := fs.String("tool", "bash", "Executable name or path")
 	path := fs.String("path", ".", "Working directory")
 	name := fs.String("name", "", "Session name (auto-generated if empty)")
 	fs.Parse(args)

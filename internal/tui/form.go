@@ -1,20 +1,23 @@
 package tui
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/filepicker"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mdipanjan/hive/internal/config"
 	"github.com/mdipanjan/hive/internal/lifecycle"
 	"github.com/mdipanjan/hive/internal/logger"
 	"github.com/mdipanjan/hive/internal/styles"
 )
 
-var Tools = lifecycle.BuiltinTools
-
 const (
 	FocusTool = iota
+	FocusCustomTool
 	FocusPath
 	FocusName
 	FocusButtons
@@ -22,6 +25,7 @@ const (
 
 func (m Model) updateNewForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+	m.err = nil
 
 	switch key {
 	case "esc":
@@ -29,19 +33,15 @@ func (m Model) updateNewForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "tab", "down":
-		if m.form.Focus < FocusButtons {
-			m.form.Focus++
-		}
+		return m.moveFormFocus(1)
 
 	case "shift+tab", "up":
-		if m.form.Focus > FocusTool {
-			m.form.Focus--
-		}
+		return m.moveFormFocus(-1)
 
 	case "left":
 		switch m.form.Focus {
 		case FocusTool:
-			m.form.Tool = (m.form.Tool - 1 + len(Tools)) % len(Tools)
+			m.form.Tool = (m.form.Tool + len(m.form.Tools)) % (len(m.form.Tools) + 1)
 		case FocusButtons:
 			m.form.Button = 0
 		}
@@ -49,7 +49,7 @@ func (m Model) updateNewForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "right":
 		switch m.form.Focus {
 		case FocusTool:
-			m.form.Tool = (m.form.Tool + 1) % len(Tools)
+			m.form.Tool = (m.form.Tool + 1) % (len(m.form.Tools) + 1)
 		case FocusButtons:
 			m.form.Button = 1
 		}
@@ -62,9 +62,7 @@ func (m Model) updateNewForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m.createSession()
 		}
-		if m.form.Focus < FocusButtons {
-			m.form.Focus++
-		}
+		return m.moveFormFocus(1)
 
 	case "backspace":
 		if m.form.Focus == FocusPath && len(m.form.Path) > 0 {
@@ -74,6 +72,14 @@ func (m Model) updateNewForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	default:
+		if m.form.Focus == FocusTool && (msg.Type == tea.KeyRunes || msg.Type == tea.KeySpace) {
+			m.form.Tool = len(m.form.Tools)
+			m.form.Focus = FocusCustomTool
+			cmd := m.form.CustomTool.Focus()
+			var inputCmd tea.Cmd
+			m.form.CustomTool, inputCmd = m.form.CustomTool.Update(msg)
+			return m, tea.Batch(cmd, inputCmd)
+		}
 		if len(key) == 1 {
 			switch m.form.Focus {
 			case FocusPath:
@@ -88,16 +94,36 @@ func (m Model) updateNewForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.form.Focus == FocusCustomTool {
+		var cmd tea.Cmd
+		m.form.CustomTool, cmd = m.form.CustomTool.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+func (m Model) moveFormFocus(direction int) (tea.Model, tea.Cmd) {
+	focus := m.form.Focus + direction
+	if focus == FocusCustomTool && m.form.Tool < len(m.form.Tools) {
+		focus += direction
+	}
+	m.form.Focus = max(FocusTool, min(FocusButtons, focus))
+	m.form.CustomTool.Blur()
+	if m.form.Focus == FocusCustomTool {
+		return m, m.form.CustomTool.Focus()
+	}
 	return m, nil
 }
 
 func newForm() NewSessionForm {
+	input := textinput.New()
+	input.Placeholder = "Executable name or path"
+	input.Width = 45
 	return NewSessionForm{
-		Tool:   3,
-		Path:   getDefaultPath(),
-		Name:   "",
-		Focus:  FocusTool,
-		Button: 0,
+		Tools:      config.Load().Tool,
+		CustomTool: input,
+		Path:       getDefaultPath(),
+		Focus:      FocusTool,
 	}
 }
 
@@ -120,7 +146,14 @@ func newFilePicker() filepicker.Model {
 }
 
 func (m Model) createSession() (tea.Model, tea.Cmd) {
-	tool := Tools[m.form.Tool]
+	tool := m.form.CustomTool.Value()
+	if m.form.Tool < len(m.form.Tools) {
+		tool = m.form.Tools[m.form.Tool]
+	}
+	if strings.TrimSpace(tool) == "" {
+		m.err = fmt.Errorf("enter a tool executable name or path")
+		return m, nil
+	}
 	path := m.form.Path
 	name := m.form.Name
 
@@ -133,6 +166,7 @@ func (m Model) createSession() (tea.Model, tea.Cmd) {
 	logger.Log.Debug("created session", "name", createdName)
 
 	m.sessions, _ = lifecycle.New().List()
+	m.err = nil
 	m.app.ReturnToSessionList()
 	return m, nil
 }

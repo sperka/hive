@@ -54,7 +54,7 @@ Usage:
 Commands:
   hive list [--json]                List all sessions
   hive create [options]             Create a new session
-      --tool <tool>                 Tool: pi, claude, nvim, bash (default: bash)
+      --tool <tool>                 Executable name or path (default: bash)
       --path <path>                 Working directory (default: .)
       --name <name>                 Session name (auto-generated if empty)
   hive attach <name>                Attach to a session

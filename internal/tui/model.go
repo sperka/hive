@@ -39,6 +39,8 @@ type Model struct {
 
 type NewSessionForm struct {
 	Tool       int
+	Tools      []string
+	CustomTool textinput.Model
 	FilePicker filepicker.Model
 	Path       string
 	Name       string
@@ -152,6 +154,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cpuUsageHistory = m.cpuUsageHistory[1:]
 		}
 		return m, cpuTick()
+	}
+	if m.app.CreatingSession() && m.form.Focus == FocusCustomTool {
+		var cmd tea.Cmd
+		m.form.CustomTool, cmd = m.form.CustomTool.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
