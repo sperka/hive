@@ -54,7 +54,7 @@ curl -fsSL https://github.com/sperka/hive/releases/latest/download/install.sh |
   HIVE_INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
-Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.3.1` on the `bash`
+Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.3.2` on the `bash`
 command to install a particular release instead of the latest stable version.
 
 <details>
@@ -96,12 +96,12 @@ The executable's directory must be writable. For a root-owned installation, run
 `sudo "$(command -v hive)" update`, or install in a user-writable directory.
 Older versions without `hive update` need the installer once to gain the command.
 
-If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.3.1
+If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.3.2
 with the release-hosted installer once:
 
 ```bash
-curl -fsSL https://github.com/sperka/hive/releases/download/v0.3.1/install.sh |
-  HIVE_VERSION=v0.3.1 bash
+curl -fsSL https://github.com/sperka/hive/releases/download/v0.3.2/install.sh |
+  HIVE_VERSION=v0.3.2 bash
 ```
 
 The installer requests sudo when `/usr/local/bin` needs it. Future updates use

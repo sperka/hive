@@ -137,9 +137,11 @@ func renderListView(m Model) string {
 	}
 	inner := width - 6
 	help := components.RenderHelp(width)
-	boxStyle := styles.OuterBox.PaddingTop(0).Width(width - 2)
-	// Reserve the border, padding, a blank line, and every wrapped legend row.
-	frameRows := boxStyle.GetVerticalFrameSize() + 1 + lipgloss.Height(help)
+	boxStyle := styles.OuterBox.Padding(0, 2).Width(width - 2)
+	theme := lipgloss.PlaceHorizontal(inner, lipgloss.Right,
+		styles.Normal.Faint(true).Render(styles.GetCurrentTheme().Name))
+	// Reserve the border, theme row, a blank line, and every wrapped legend row.
+	frameRows := boxStyle.GetVerticalFrameSize() + lipgloss.Height(theme) + 1 + lipgloss.Height(help)
 	header := components.RenderHeader(m.sessions, inner, m.mark.Render(string(styles.ColorCyan)))
 	coreCount := max(m.cpu.LogicalCPUs, len(m.cpu.PerCore))
 	columns := components.CPUColumns(inner-4, coreCount)
@@ -189,6 +191,7 @@ func renderListView(m Model) string {
 		message := strings.Join(strings.Fields(ansi.Strip("Error: "+m.err.Error())), " ")
 		fullContent += "\n" + styles.Normal.Render(ansi.Truncate(message, inner, "..."))
 	}
+	fullContent += "\n" + theme
 	// The header includes its own top padding around the mark.
 	box := boxStyle.Render(fullContent)
 	content := box + "\n\n" + lipgloss.PlaceHorizontal(width, lipgloss.Center, help)

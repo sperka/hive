@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.2
+
+- Remove the keyboard legend's background fill while keeping its text bright.
+- Show the active theme name dimmed in the dashboard's bottom-right corner.
+- Keep the theme name and cycling order in sync with the saved theme on startup.
+
 ## 0.3.1
 
 - Find updates through GitHub's public release redirect instead of the

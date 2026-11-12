@@ -39,6 +39,13 @@ var (
 )
 
 func ApplyTheme(t Theme) {
+	for i, theme := range Themes {
+		if theme.Key == t.Key {
+			CurrentThemeIndex = i
+			break
+		}
+	}
+
 	ColorGreen = t.Green
 	ColorYellow = t.Yellow
 	ColorGray = t.Gray
@@ -89,17 +96,14 @@ func ApplyTheme(t Theme) {
 
 	Help = lipgloss.NewStyle().
 		Foreground(ColorWhite).
-		Background(ColorBgDark).
 		Padding(0, 2)
 
 	HelpKey = lipgloss.NewStyle().
 		Foreground(ColorCyan).
-		Background(ColorBgDark).
 		Bold(true)
 
 	HelpDesc = lipgloss.NewStyle().
-		Foreground(ColorWhite).
-		Background(ColorBgDark)
+		Foreground(ColorWhite)
 
 	Label = lipgloss.NewStyle().
 		Foreground(ColorGray).
