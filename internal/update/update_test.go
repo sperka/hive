@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +21,59 @@ type archiveEntry struct {
 	name string
 	kind byte
 	body string
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestRunChecksRepeatedlyWithoutAPIOrRawAccess(t *testing.T) {
+	previous := http.DefaultClient
+	t.Cleanup(func() { http.DefaultClient = previous })
+	http.DefaultClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		response := &http.Response{
+			StatusCode: http.StatusOK, Header: make(http.Header),
+			Body: http.NoBody, Request: r,
+		}
+		switch r.URL.String() {
+		case "https://github.com/sperka/hive/releases/latest":
+			response.StatusCode = http.StatusFound
+			response.Header.Set("Location", "https://github.com/sperka/hive/releases/tag/v0.3.1")
+		case "https://github.com/sperka/hive/releases/tag/v0.3.1":
+		default:
+			response.StatusCode = http.StatusForbidden
+		}
+		response.Status = fmt.Sprintf("%d %s", response.StatusCode, http.StatusText(response.StatusCode))
+		return response, nil
+	})}
+	for _, current := range []string{"0.2.0", "0.3.0", "0.3.1", "0.3.1"} {
+		var out bytes.Buffer
+		if err := Run(context.Background(), current, true, &out); err != nil {
+			t.Fatalf("check from %s failed without API access: %v", current, err)
+		}
+		if !strings.Contains(out.String(), "v0.3.1") {
+			t.Fatalf("latest release missing: %s", out.String())
+		}
+	}
+}
+
+func TestLatestReleaseRejectsUnexpectedRedirect(t *testing.T) {
+	for _, destination := range []string{"/unrelated/tag/v0.3.1", "/latest"} {
+		t.Run(destination, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/latest" && destination != "/latest" {
+					http.Redirect(w, r, destination, http.StatusFound)
+				}
+			}))
+			defer server.Close()
+			u := updater{client: server.Client(), latestURL: server.URL + "/latest"}
+			if _, err := u.latestRelease(context.Background()); err == nil {
+				t.Fatal("accepted a response outside the repository's tagged release path")
+			}
+		})
+	}
 }
 
 func makeArchive(t *testing.T, entries ...archiveEntry) []byte {
@@ -66,13 +118,13 @@ func TestUpdate(t *testing.T) {
 		checksums  string
 		status     int
 		missing    bool
-		prerelease bool
 		wantUpdate bool
 		wantError  string
 		wantOutput string
 	}{
 		{name: "upgrade", current: "0.1.2", wantUpdate: true},
 		{name: "minor fork upgrade", current: "0.2.0", tag: "v0.3.0", wantUpdate: true},
+		{name: "patch upgrade", current: "0.3.0", tag: "v0.3.1", wantUpdate: true},
 		{name: "symlink", current: "v0.1.2", symlink: true, wantUpdate: true},
 		{name: "development build", current: "dev", wantUpdate: true},
 		{name: "release candidate", current: "0.2.0-rc.1", wantUpdate: true},
@@ -81,10 +133,10 @@ func TestUpdate(t *testing.T) {
 		{name: "build metadata", current: "0.2.0+local", wantOutput: "up to date"},
 		{name: "newer version", current: "0.10.0", wantOutput: "up to date"},
 		{name: "invalid version", current: "0.1.2", tag: "not-a-version", wantError: "invalid stable release"},
-		{name: "prerelease", current: "0.1.2", prerelease: true, wantError: "invalid stable release"},
+		{name: "prerelease", current: "0.1.2", tag: "v0.3.1-rc.1", wantError: "invalid stable release"},
 		{name: "no release", current: "0.1.2", status: 404, wantError: "404"},
 		{name: "rate limited", current: "0.1.2", status: 403, wantError: "403"},
-		{name: "missing assets", current: "0.1.2", missing: true, wantError: "missing"},
+		{name: "missing assets", current: "0.1.2", missing: true, wantError: "404"},
 		{name: "wrong checksum", current: "0.1.2",
 			checksums: strings.Repeat("0", 64) + "  hive_linux_arm64.tar.gz\n", wantError: "checksum mismatch"},
 		{name: "missing checksum", current: "0.1.2", checksums: "unrelated\n", wantError: "no checksum"},
@@ -137,25 +189,25 @@ func TestUpdate(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/latest":
+					if r.Method != http.MethodHead {
+						http.Error(w, "release discovery requires HEAD", http.StatusMethodNotAllowed)
+						return
+					}
 					if tt.status != 0 {
 						w.WriteHeader(tt.status)
 						return
 					}
-					assets := []map[string]string{}
-					if !tt.missing {
-						for _, name := range []string{"hive_linux_arm64.tar.gz", "checksums.txt"} {
-							assets = append(assets, map[string]string{
-								"name": name, "browser_download_url": "http://" + r.Host + "/" + name,
-							})
-						}
+					http.Redirect(w, r, "/tag/"+tag, http.StatusFound)
+				case "/tag/" + tag:
+					w.WriteHeader(http.StatusOK)
+				case "/download/" + tag + "/checksums.txt":
+					if tt.missing {
+						http.NotFound(w, r)
+						return
 					}
-					json.NewEncoder(w).Encode(map[string]any{
-						"tag_name": tag, "prerelease": tt.prerelease, "assets": assets,
-					})
-				case "/checksums.txt":
 					downloads.Add(1)
 					io.WriteString(w, checksums)
-				case "/hive_linux_arm64.tar.gz":
+				case "/download/" + tag + "/hive_linux_arm64.tar.gz":
 					downloads.Add(1)
 					w.Write(archive)
 				default:

@@ -136,6 +136,10 @@ func renderListView(m Model) string {
 		return text
 	}
 	inner := width - 6
+	help := components.RenderHelp(width)
+	boxStyle := styles.OuterBox.PaddingTop(0).Width(width - 2)
+	// Reserve the border, padding, a blank line, and every wrapped legend row.
+	frameRows := boxStyle.GetVerticalFrameSize() + 1 + lipgloss.Height(help)
 	header := components.RenderHeader(m.sessions, inner, m.mark.Render(string(styles.ColorCyan)))
 	coreCount := max(m.cpu.LogicalCPUs, len(m.cpu.PerCore))
 	columns := components.CPUColumns(inner-4, coreCount)
@@ -144,14 +148,14 @@ func renderListView(m Model) string {
 		if m.height < 30 || width < 64 {
 			cpuRows = 1
 		} else {
-			cpuRows = min(cpuRows, max(5, m.height-6-lipgloss.Height(header)-12))
+			cpuRows = min(cpuRows, max(5, m.height-frameRows-lipgloss.Height(header)-12))
 		}
 	}
 	activity := components.RenderActivity(inner, m.cpu, m.cpuUsageHistory, cpuRows)
 	panelRows := 12
 	stacked := width < 64
 	if m.height > 0 {
-		available := m.height - 6 - lipgloss.Height(header) - lipgloss.Height(activity)
+		available := m.height - frameRows - lipgloss.Height(header) - lipgloss.Height(activity)
 		if m.err != nil {
 			available--
 		}
@@ -186,20 +190,13 @@ func renderListView(m Model) string {
 		fullContent += "\n" + styles.Normal.Render(ansi.Truncate(message, inner, "..."))
 	}
 	// The header includes its own top padding around the mark.
-	box := styles.OuterBox.PaddingTop(0).Width(width - 2).Render(fullContent)
-	help := components.RenderHelp()
-	if lipgloss.Width(help) > width {
-		help = styles.Dim.Render("j/k select  enter attach  n new  r rename  ? help  q quit")
-	}
-	help = ansi.Truncate(help, width, "")
+	box := boxStyle.Render(fullContent)
+	content := box + "\n\n" + lipgloss.PlaceHorizontal(width, lipgloss.Center, help)
 	if m.width > 0 && m.height > 0 {
-		// Keep the removed panel gap below the frame so centering does not
-		// move the session panels down when the dashboard becomes shorter.
-		box = lipgloss.Place(m.width, m.height-2, lipgloss.Center, lipgloss.Center, box+"\n")
-		help = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, help)
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 	}
 
-	return box + "\n" + help
+	return content
 }
 
 func renderNewView(m Model) string {

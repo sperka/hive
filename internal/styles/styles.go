@@ -88,13 +88,18 @@ func ApplyTheme(t Theme) {
 		Foreground(ColorGray)
 
 	Help = lipgloss.NewStyle().
-		Foreground(ColorDim)
+		Foreground(ColorWhite).
+		Background(ColorBgDark).
+		Padding(0, 2)
 
 	HelpKey = lipgloss.NewStyle().
-		Foreground(ColorCyan)
+		Foreground(ColorCyan).
+		Background(ColorBgDark).
+		Bold(true)
 
 	HelpDesc = lipgloss.NewStyle().
-		Foreground(ColorGray)
+		Foreground(ColorWhite).
+		Background(ColorBgDark)
 
 	Label = lipgloss.NewStyle().
 		Foreground(ColorGray).

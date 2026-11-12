@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -103,7 +104,8 @@ func TestReturnFromAttachKeepsSelectionInRefreshedList(t *testing.T) {
 
 func dashboardBox(m Model) string {
 	view := renderListView(m)
-	return view[:strings.LastIndex(view, "\n")]
+	box, _, _ := strings.Cut(view, "\n\n")
+	return box
 }
 
 func TestDashboardWidthIncludesBorders(t *testing.T) {
@@ -173,5 +175,44 @@ func TestDashboardFitsShortViewports(t *testing.T) {
 		if w, h := lipgloss.Size(view); w > m.width || h > m.height {
 			t.Errorf("viewport %dx%d: rendered %dx%d", m.width, m.height, w, h)
 		}
+	}
+}
+
+func TestDashboardLegendStaysBelowFrameAcrossViewportSizes(t *testing.T) {
+	for _, size := range [][2]int{{160, 50}, {100, 40}, {100, 24}, {80, 20}, {60, 24}, {40, 24}} {
+		t.Run(fmt.Sprintf("%dx%d", size[0], size[1]), func(t *testing.T) {
+			m := dashboardFixture()
+			m.width, m.height = size[0], size[1]
+			view := ansi.Strip(renderListView(m))
+			if w, h := lipgloss.Size(view); w > m.width || h > m.height {
+				t.Fatalf("legend overflowed viewport: %dx%d", w, h)
+			}
+			lines := strings.Split(view, "\n")
+			frameBottom := -1
+			for i, line := range lines {
+				if strings.HasPrefix(strings.TrimSpace(line), "\u2570") {
+					frameBottom = i
+				}
+			}
+			if frameBottom < 0 {
+				t.Fatal("dashboard frame missing")
+			}
+			legend := strings.Join(lines[frameBottom+1:], "\n")
+			for _, shortcut := range []string{
+				"j/k: select", "enter: attach", "n: new", "d: delete",
+				"r: rename", "/: search", "t: theme", "?: help", "q: quit",
+			} {
+				if !strings.Contains(legend, shortcut) {
+					t.Errorf("legend lost %q:\n%s", shortcut, legend)
+				}
+			}
+			firstLegendRow := frameBottom + 1
+			for firstLegendRow < len(lines) && strings.TrimSpace(lines[firstLegendRow]) == "" {
+				firstLegendRow++
+			}
+			if firstLegendRow > frameBottom+2 {
+				t.Errorf("legend is %d rows below the frame", firstLegendRow-frameBottom)
+			}
+		})
 	}
 }

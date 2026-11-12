@@ -22,6 +22,8 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
+  extra_files:
+    - glob: install.sh
 
 changelog:
   use: github
@@ -29,6 +31,8 @@ changelog:
 
 release:
   draft: true
+  extra_files:
+    - glob: install.sh
   github:
     owner: sperka
     name: hive

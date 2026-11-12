@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.1
+
+- Find updates through GitHub's public release redirect instead of the
+  anonymous REST API, avoiding its shared-IP rate limit.
+- Publish a checksum-listed installer with each release so installation no
+  longer depends on raw.githubusercontent.com or the GitHub API.
+- Keep the full keyboard legend directly below the dashboard, wrapping
+  shortcuts on narrow terminals.
+- Make the legend readable with bright labels, bold keys, and a filled
+  background that follows the selected theme.
+
 ## 0.3.0
 
 - Redesigned the dashboard around a 100-column frame with Sessions and Details

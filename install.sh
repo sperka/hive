@@ -41,11 +41,19 @@ esac
 
 # Get the latest stable version, unless a specific release was requested.
 if [ -z "$VERSION" ]; then
-    VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" |
-        sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p')
+    RELEASE_URL=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+        "https://github.com/$REPO/releases/latest")
+    case "$RELEASE_URL" in
+        "https://github.com/$REPO/releases/tag/"*)
+            VERSION=${RELEASE_URL#"https://github.com/$REPO/releases/tag/"}
+            ;;
+        *) fail "Invalid latest release URL: $RELEASE_URL" ;;
+    esac
+    [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z.-]+)?$ ]] ||
+        fail "Invalid stable release version: $VERSION"
 fi
 [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] ||
-    fail "Invalid release version: $VERSION (expected v0.3.0, for example)"
+    fail "Invalid release version: $VERSION (expected v0.3.1, for example)"
 
 echo "Installing $BINARY $VERSION for $OS/$ARCH..."
 

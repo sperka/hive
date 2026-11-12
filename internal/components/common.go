@@ -12,13 +12,34 @@ type HelpItem struct {
 	Desc string
 }
 
-func RenderHelpBar(items []HelpItem) string {
+func RenderHelpBar(items []HelpItem, widths ...int) string {
 	var parts []string
 	for _, item := range items {
 		part := styles.HelpKey.Render(item.Key) + styles.HelpDesc.Render(": "+item.Desc)
 		parts = append(parts, part)
 	}
-	return styles.Help.Render("  " + strings.Join(parts, "   "))
+	if len(widths) > 0 && widths[0] > 0 {
+		helpStyle := styles.Help.Width(widths[0])
+		contentWidth := widths[0] - helpStyle.GetHorizontalFrameSize()
+		separator := styles.HelpDesc.Render("  ")
+		var rows []string
+		line := ""
+		for _, part := range parts {
+			if line == "" {
+				line = part
+			} else if lipgloss.Width(line+separator+part) <= contentWidth {
+				line += separator + part
+			} else {
+				rows = append(rows, line)
+				line = part
+			}
+		}
+		if line != "" {
+			rows = append(rows, line)
+		}
+		return helpStyle.Render(strings.Join(rows, "\n"))
+	}
+	return styles.Help.Render(strings.Join(parts, styles.HelpDesc.Render("   ")))
 }
 
 func RenderButtons(labels []string, selected int, focused bool, width int) string {

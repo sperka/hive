@@ -18,15 +18,20 @@ output=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -o) output=$2; shift 2 ;;
+        -w) shift 2 ;;
         -*) shift ;;
         *) url=$1; shift ;;
     esac
 done
 printf '%s\n' "$url" >> "$HIVE_INSTALL_TEST_DIR/requests"
 case "$url" in
-    https://api.github.com/repos/sperka/hive/releases/latest)
-        if [ "${HIVE_TEST_FAIL:-}" = api ]; then exit 22; fi
-        printf '{"tag_name": "%s"}\n' "$HIVE_INSTALL_TEST_VERSION"
+    https://api.github.com/*|https://raw.githubusercontent.com/*)
+        echo "HTTP 403: API and raw downloads are blocked in this test" >&2
+        exit 22
+        ;;
+    https://github.com/sperka/hive/releases/latest)
+        if [ "${HIVE_TEST_FAIL:-}" = latest ]; then exit 22; fi
+        printf '%s' "${HIVE_TEST_RELEASE_URL:-https://github.com/sperka/hive/releases/tag/$HIVE_INSTALL_TEST_VERSION}"
         ;;
     "https://github.com/sperka/hive/releases/download/$HIVE_INSTALL_TEST_VERSION/"*)
         name=${url##*/}
@@ -81,10 +86,10 @@ for os in Linux Darwin; do
     done
 done
 
-# A pinned install skips the latest-release API request.
+# A pinned install skips release discovery.
 : > "$TEST_DIR/requests"
 HIVE_VERSION="$HIVE_INSTALL_TEST_VERSION" run_installer
-if grep -q 'api.github.com' "$TEST_DIR/requests"; then
+if grep -q '/releases/latest' "$TEST_DIR/requests"; then
     echo "Pinned install queried latest release" >&2
     exit 1
 fi
@@ -105,8 +110,11 @@ assert_failure_preserves_binary() {
     assert_clean
 }
 
-HIVE_TEST_FAIL=api assert_failure_preserves_binary
+HIVE_TEST_FAIL=latest assert_failure_preserves_binary
 HIVE_TEST_FAIL=archive assert_failure_preserves_binary
+HIVE_TEST_RELEASE_URL=https://example.com/releases/tag/v0.3.1 assert_failure_preserves_binary
+HIVE_TEST_RELEASE_URL=https://github.com/sperka/hive/releases/tag/invalid assert_failure_preserves_binary
+HIVE_TEST_RELEASE_URL=https://github.com/sperka/hive/releases/tag/v0.3.1-rc.1 assert_failure_preserves_binary
 HIVE_VERSION=../../invalid assert_failure_preserves_binary
 HIVE_TEST_ARCH=riscv64 assert_failure_preserves_binary
 HIVE_TEST_OS=Windows assert_failure_preserves_binary

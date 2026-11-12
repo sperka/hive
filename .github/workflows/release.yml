@@ -49,6 +49,8 @@ jobs:
           gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$artifact_dir"
           cd "$artifact_dir"
           sha256sum -c checksums.txt
+          bash -n install.sh
+          cmp install.sh "$GITHUB_WORKSPACE/install.sh"
           for archive in hive_{linux,darwin}_{amd64,arm64}.tar.gz; do
             tar -tzf "$archive" | grep -qx hive
           done

@@ -8,11 +8,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,16 +22,6 @@ import (
 )
 
 const Repository = "sperka/hive"
-
-type release struct {
-	Tag        string `json:"tag_name"`
-	Draft      bool   `json:"draft"`
-	Prerelease bool   `json:"prerelease"`
-	Assets     []struct {
-		Name string `json:"name"`
-		URL  string `json:"browser_download_url"`
-	} `json:"assets"`
-}
 
 type updater struct {
 	client     *http.Client
@@ -44,7 +34,7 @@ type updater struct {
 func Run(ctx context.Context, currentVersion string, checkOnly bool, out io.Writer) error {
 	u := updater{
 		client:     http.DefaultClient,
-		latestURL:  "https://api.github.com/repos/" + Repository + "/releases/latest",
+		latestURL:  "https://github.com/" + Repository + "/releases/latest",
 		executable: os.Executable,
 		goos:       runtime.GOOS,
 		goarch:     runtime.GOARCH,
@@ -57,43 +47,25 @@ func (u updater) run(ctx context.Context, currentVersion string, checkOnly bool,
 		return fmt.Errorf("updates are not available for %s/%s", u.goos, u.goarch)
 	}
 	fmt.Fprintf(out, "Checking %s releases...\n", Repository)
-	body, err := u.get(ctx, u.latestURL)
+	latest, err := u.latestRelease(ctx)
 	if err != nil {
 		return err
 	}
-	var latest release
-	err = json.NewDecoder(body).Decode(&latest)
-	body.Close()
-	if err != nil {
-		return fmt.Errorf("read latest release: %w", err)
-	}
-	if latest.Draft || latest.Prerelease || !semver.IsValid(latest.Tag) || semver.Prerelease(latest.Tag) != "" {
-		return fmt.Errorf("invalid stable release version %q", latest.Tag)
-	}
 
 	current := "v" + strings.TrimPrefix(currentVersion, "v")
-	if semver.IsValid(current) && semver.Compare(current, latest.Tag) >= 0 {
-		fmt.Fprintf(out, "Hive %s is up to date (latest release: %s).\n", currentVersion, latest.Tag)
+	if semver.IsValid(current) && semver.Compare(current, latest) >= 0 {
+		fmt.Fprintf(out, "Hive %s is up to date (latest release: %s).\n", currentVersion, latest)
 		return nil
 	}
-	fmt.Fprintf(out, "Update available: %s -> %s\n", currentVersion, latest.Tag)
+	fmt.Fprintf(out, "Update available: %s -> %s\n", currentVersion, latest)
 	if checkOnly {
 		return nil
 	}
 
 	archiveName := fmt.Sprintf("hive_%s_%s.tar.gz", u.goos, u.goarch)
-	archiveURL, checksumURL := "", ""
-	for _, asset := range latest.Assets {
-		switch asset.Name {
-		case archiveName:
-			archiveURL = asset.URL
-		case "checksums.txt":
-			checksumURL = asset.URL
-		}
-	}
-	if archiveURL == "" || checksumURL == "" {
-		return fmt.Errorf("release %s is missing %s or checksums.txt", latest.Tag, archiveName)
-	}
+	// Pin both downloads to the resolved tag so a concurrent release cannot mix assets.
+	downloadURL := strings.TrimSuffix(u.latestURL, "/latest") + "/download/" + url.PathEscape(latest) + "/"
+	archiveURL, checksumURL := downloadURL+archiveName, downloadURL+"checksums.txt"
 
 	target, err := u.executable()
 	if err != nil {
@@ -117,7 +89,7 @@ func (u updater) run(ctx context.Context, currentVersion string, checkOnly bool,
 	defer os.Remove(staged.Name())
 	defer staged.Close()
 
-	body, err = u.get(ctx, checksumURL)
+	body, err := u.get(ctx, checksumURL)
 	if err != nil {
 		return err
 	}
@@ -168,12 +140,39 @@ func (u updater) run(ctx context.Context, currentVersion string, checkOnly bool,
 	if err := os.Rename(staged.Name(), target); err != nil {
 		return fmt.Errorf("replace %s: %w", target, err)
 	}
-	fmt.Fprintf(out, "Updated Hive to %s at %s. Reopen Hive to use it.\n", latest.Tag, target)
+	fmt.Fprintf(out, "Updated Hive to %s at %s. Reopen Hive to use it.\n", latest, target)
 	return nil
 }
 
+func (u updater) latestRelease(ctx context.Context) (string, error) {
+	// GitHub's public redirect does not consume the anonymous REST API quota.
+	resp, err := u.request(ctx, http.MethodHead, u.latestURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	prefix := strings.TrimSuffix(u.latestURL, "/latest") + "/tag/"
+	resolved := resp.Request.URL.String()
+	if !strings.HasPrefix(resolved, prefix) {
+		return "", fmt.Errorf("invalid stable release URL %q", resolved)
+	}
+	tag, err := url.PathUnescape(strings.TrimPrefix(resolved, prefix))
+	if err != nil || !semver.IsValid(tag) || semver.Prerelease(tag) != "" {
+		return "", fmt.Errorf("invalid stable release version %q", tag)
+	}
+	return tag, nil
+}
+
 func (u updater) get(ctx context.Context, url string) (io.ReadCloser, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := u.request(ctx, http.MethodGet, url)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+func (u updater) request(ctx context.Context, method, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,7 @@ func (u updater) get(ctx context.Context, url string) (io.ReadCloser, error) {
 		resp.Body.Close()
 		return nil, fmt.Errorf("fetch %s: HTTP %s", url, resp.Status)
 	}
-	return resp.Body, nil
+	return resp, nil
 }
 
 func checksum(r io.Reader, name string) (string, error) {

@@ -38,7 +38,7 @@ Managing multiple AI coding agents (Claude, Pi, Cursor) across projects gets mes
 **Works on:** macOS, Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh | bash
+curl -fsSL https://github.com/sperka/hive/releases/latest/download/install.sh | bash
 ```
 
 Then run: `hive`
@@ -50,11 +50,11 @@ upgrade an older Hive installation that does not yet have `hive update`.
 To install without sudo:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh |
+curl -fsSL https://github.com/sperka/hive/releases/latest/download/install.sh |
   HIVE_INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
-Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.3.0` on the `bash`
+Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.3.1` on the `bash`
 command to install a particular release instead of the latest stable version.
 
 <details>
@@ -83,6 +83,10 @@ hive update          # Download, verify, and install it
 ```
 
 Updates come from [sperka/hive releases](https://github.com/sperka/hive/releases).
+Starting with v0.3.1, release discovery uses GitHub's public latest-release
+redirect. Updates and installation do not require the anonymous REST API or
+raw.githubusercontent.com. Both binary and checksum downloads use the same
+resolved release tag.
 Hive verifies the archive's SHA-256 checksum and atomically replaces its own
 executable, including when launched through a symlink. Config and tmux sessions
 are preserved. Reopen Hive after updating. Equal or newer installed versions are
@@ -91,6 +95,19 @@ left in place; development builds can update to the latest stable release.
 The executable's directory must be writable. For a root-owned installation, run
 `sudo "$(command -v hive)" update`, or install in a user-writable directory.
 Older versions without `hive update` need the installer once to gain the command.
+
+If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.3.1
+with the release-hosted installer once:
+
+```bash
+curl -fsSL https://github.com/sperka/hive/releases/download/v0.3.1/install.sh |
+  HIVE_VERSION=v0.3.1 bash
+```
+
+The installer requests sudo when `/usr/local/bin` needs it. Future updates use
+`hive update` (with sudo for a root-owned installation). A 403 from the release
+download itself still requires checking that machine's network or proxy access
+to GitHub; changing the updater cannot override a network block.
 
 ## Usage
 
@@ -103,6 +120,9 @@ when space permits, otherwise four. Core numbers run down each column before
 continuing in the next. The title, statistics, and grid share one left edge.
 Percentages use green below 50%, yellow from 50%, and red from 80%. Startup and
 unavailable samples are identified instead of drawn as zero.
+The keyboard legend stays directly below the frame, with bright labels, bold
+keys, and a filled background. It wraps instead of hiding shortcuts on narrow
+terminals.
 
 All terminals, including Ghostty and Kitty, use the original text hexagons by
 default. A generated image is available by explicitly enabling Kitty graphics.
