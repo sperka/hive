@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mdipanjan/hive/internal/config"
 	"github.com/mdipanjan/hive/internal/lifecycle"
 	"github.com/mdipanjan/hive/internal/runner"
@@ -143,8 +142,7 @@ func runSwitch(args []string) bool {
 	cfg := config.Load()
 	styles.ApplyTheme(styles.GetThemeByKey(cfg.Theme))
 
-	p := tea.NewProgram(tui.NewSwitch(), tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	if err := tui.Run(tui.NewSwitch()); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

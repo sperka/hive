@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.0
+
+- Redesigned the dashboard around a 100-column frame with Sessions and Details
+  side by side and CPU activity below.
+- Restored the original 3-4-3 hexagons, with a bold HIVE/version label and
+  right-aligned session totals and state icons.
+- Replaced simulated CPU history with real measurements, including average,
+  peak, graph scale, sample count, and physical/logical core counts.
+- Added color-coded per-core percentages in four or eight columns, numbered
+  top to bottom, with shared alignment and subdued statistics.
+- Added optional Kitty graphics for Ghostty/Kitty, including SSH and existing
+  tmux passthrough support; text hexagons remain the default.
+- Improved narrow-terminal layouts, long Unicode fields, overlay resizing,
+  and selection after returning from an attached session.
+- Updated installation and release validation for v0.3.0. Existing v0.2.0
+  installations can upgrade with `hive update`.
+
 ## 0.2.0
 
 - Added `hive update` and `hive update --check` using `sperka/hive` releases.

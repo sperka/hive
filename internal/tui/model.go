@@ -7,9 +7,10 @@ import (
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/mdipanjan/hive/internal/components"
+	"github.com/mdipanjan/hive/internal/graphics"
 	"github.com/mdipanjan/hive/internal/lifecycle"
 	"github.com/mdipanjan/hive/internal/logger"
+	"github.com/mdipanjan/hive/internal/metrics"
 	"github.com/mdipanjan/hive/internal/session"
 	"golang.org/x/term"
 )
@@ -35,7 +36,10 @@ type Model struct {
 	deleteButton    int
 	renameInput     textinput.Model
 	renameName      string
-	cpuUsageHistory []int
+	cpuUsageHistory []float64
+	cpu             metrics.CPU
+	cpuSampler      *metrics.Sampler
+	mark            *graphics.Mark
 	err             error
 }
 
@@ -51,6 +55,7 @@ type NewSessionForm struct {
 }
 
 type cpuTickMsg time.Time
+type cpuSampleMsg struct{ sample metrics.CPU }
 type sessionAttachedMsg struct{ err error }
 
 func New() Model {
@@ -76,6 +81,10 @@ func newModel(mode Mode) Model {
 		app:      NewAppState(),
 		err:      err,
 	}
+	if mode == ModeDashboard {
+		m.cpuSampler = metrics.NewSampler()
+		m.mark = graphics.NewMark()
+	}
 
 	if w, h, sizeErr := term.GetSize(int(os.Stdout.Fd())); sizeErr == nil && w > 0 && h > 0 {
 		m.width = w
@@ -96,10 +105,27 @@ func (m Model) Init() tea.Cmd {
 	if m.mode == ModeSwitch {
 		return textinput.Blink
 	}
-	return cpuTick()
+	return m.sampleCPU()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Viewport and sampling messages must not be swallowed by overlay inputs.
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+		return m, nil
+	case cpuTickMsg:
+		return m, m.sampleCPU()
+	case cpuSampleMsg:
+		m.cpu = msg.sample
+		if msg.sample.Valid {
+			m.cpuUsageHistory = append(m.cpuUsageHistory, msg.sample.Usage)
+			if len(m.cpuUsageHistory) > 60 {
+				m.cpuUsageHistory = m.cpuUsageHistory[len(m.cpuUsageHistory)-60:]
+			}
+		}
+		return m, cpuTick()
+	}
 	if m.app.PickingPath() {
 		return m.updateFilePicker(msg)
 	}
@@ -124,12 +150,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		sessions, _ := lifecycle.New().List()
 		m.sessions = sessions
+		m.cursor = max(0, min(m.cursor, len(sessions)-1))
 		return m, tea.ClearScreen
-
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
 
 	case tea.KeyMsg:
 		if m.app.Searching() {
@@ -152,13 +174,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m.updateList(msg)
 
-	case cpuTickMsg:
-		cpuValue := components.GetCPUPercent()
-		m.cpuUsageHistory = append(m.cpuUsageHistory, cpuValue)
-		if len(m.cpuUsageHistory) > 60 {
-			m.cpuUsageHistory = m.cpuUsageHistory[1:]
-		}
-		return m, cpuTick()
 	}
 	if m.app.CreatingSession() && m.form.Focus == FocusCustomTool {
 		var cmd tea.Cmd

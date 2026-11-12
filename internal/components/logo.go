@@ -3,11 +3,5 @@ package components
 import "github.com/mdipanjan/hive/internal/styles"
 
 func RenderLogo() string {
-	logo := `██╗  ██╗██╗██╗   ██╗███████╗
-██║  ██║██║██║   ██║██╔════╝
-███████║██║██║   ██║█████╗
-██╔══██║██║╚██╗ ██╔╝██╔══╝
-██║  ██║██║ ╚████╔╝ ███████╗
-╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝`
-	return styles.Logo.Render(logo)
+	return styles.Logo.Bold(true).Italic(false).Render("HIVE")
 }

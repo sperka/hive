@@ -1,8 +1,9 @@
 # Releasing Hive
 
-Releases continue the upstream version sequence. The first fork release is
-`v0.2.0`, the minor bump after `v0.1.2`. Release tags must point to reviewed commits
-on `main`. Keep updater changes and installer/release changes in separate commits.
+Releases continue the upstream version sequence: `v0.1.2`, the first fork release
+`v0.2.0`, and the dashboard release `v0.3.0`. Release tags must point to reviewed
+commits on `main`. Consolidate the dashboard and v0.3.0 release preparation into
+one commit above `v0.2.0`.
 
 ## Validate locally
 
@@ -10,6 +11,7 @@ on `main`. Keep updater changes and installer/release changes in separate commit
 mise install
 mise exec -- go test -race -timeout 0 ./...
 mise exec -- go vet ./...
+bash -n install.sh scripts/test-install.sh
 mise exec -- shellcheck install.sh scripts/test-install.sh
 bash scripts/test-install.sh
 mise exec -- goreleaser check
@@ -19,6 +21,7 @@ mise exec -- goreleaser release --snapshot --clean
 Confirm that `dist/checksums.txt` covers all four platform archives. On a matching
 platform, run the built binary's `--version` and `update --help` commands.
 The installer tests use local fixtures and never change the real installation.
+Their release version comes from the first section of `CHANGELOG.md`.
 
 ## Publish
 
@@ -26,8 +29,8 @@ Update the first section of `CHANGELOG.md` for the new version and commit it.
 Check that the release version matches that section before tagging.
 
 ```bash
-git tag -a v0.2.0 -m "release v0.2.0"
-git push --atomic origin main v0.2.0
+git tag -a v0.3.0 -m "release v0.3.0"
+git push --atomic origin main v0.3.0
 ```
 
 The tag workflow runs tests, creates a draft release, downloads the assets,
@@ -47,15 +50,16 @@ curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh |
 "$release_test_dir/hive" update
 ```
 
-Also use an older-version development build in a temporary directory to verify
-an actual `hive update` against the published release. This confirms replacement,
-checksum verification, and the installed version together.
+Also download the published v0.2.0 archive for the current platform, verify its
+checksum, and extract it into a separate temporary directory. Run that copy's
+`hive update --check`, `hive update`, and `hive --version` to confirm the real
+v0.2.0-to-v0.3.0 upgrade, checksum verification, and executable replacement.
+Do not update the system installation as part of release validation.
 
 ## Rollback
 
 Stop promotion if assets are missing, checksums fail, or installation, updating,
-or session operations regress. Before updating the local installation, save its
-binary so the first fork release has a rollback target:
+or session operations regress. Before updating an installation, save its binary:
 
 ```bash
 cp "$(command -v hive)" ./hive.previous
@@ -69,9 +73,9 @@ curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh |
   HIVE_VERSION=v0.2.0 bash
 ```
 
-Use the actual known good version; the first fork release has no earlier fork
-assets. Check `hive --version` and session listing after rollback. This release
-does not migrate config or delete tmux sessions.
+The previous release, v0.2.0, is the rollback target for v0.3.0. Check
+`hive --version` and session listing after rollback. This release does not migrate
+config or delete tmux sessions.
 
 For a broken published release, remove its "latest" designation and mark it as
 a prerelease while preparing a patch release. Existing installations will not

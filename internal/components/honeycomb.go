@@ -6,24 +6,15 @@ import (
 	"github.com/mdipanjan/hive/internal/styles"
 )
 
-func RenderHoneycomb(rows, cols int) string {
+func RenderHoneycomb(rowCounts ...int) string {
+	maxCount := 0
+	for _, count := range rowCounts {
+		maxCount = max(maxCount, count)
+	}
 	var lines []string
 
-	for i := 0; i < rows; i++ {
-		var line string
-
-		if i%2 == 0 {
-			line = "  "
-			for j := 0; j < cols; j++ {
-				line += "⬡ "
-			}
-		} else {
-			line = " "
-			for j := 0; j < cols+1; j++ {
-				line += "⬡ "
-			}
-		}
-
+	for _, count := range rowCounts {
+		line := strings.Repeat(" ", maxCount-count+1) + strings.Repeat("\u2b21 ", count)
 		lines = append(lines, strings.TrimRight(line, " "))
 	}
 

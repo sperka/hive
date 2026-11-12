@@ -34,3 +34,13 @@ func cpuTick() tea.Cmd {
 		return cpuTickMsg(t)
 	})
 }
+
+func (m Model) sampleCPU() tea.Cmd {
+	if m.cpuSampler == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		sample, _ := m.cpuSampler.Sample()
+		return cpuSampleMsg{sample: sample}
+	}
+}

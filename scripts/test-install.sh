@@ -6,6 +6,8 @@ TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_DIR"' EXIT
 mkdir -p "$TEST_DIR/bin" "$TEST_DIR/fixtures" "$TEST_DIR/destination" "$TEST_DIR/tmp"
 export HIVE_INSTALL_TEST_DIR="$TEST_DIR"
+HIVE_INSTALL_TEST_VERSION=$(awk '/^## / { print "v" $2; exit }' "$PROJECT_DIR/CHANGELOG.md")
+export HIVE_INSTALL_TEST_VERSION
 
 # Only curl and uname are substituted. Downloads must use the fork's URLs.
 cat > "$TEST_DIR/bin/curl" <<'SH'
@@ -24,9 +26,9 @@ printf '%s\n' "$url" >> "$HIVE_INSTALL_TEST_DIR/requests"
 case "$url" in
     https://api.github.com/repos/sperka/hive/releases/latest)
         if [ "${HIVE_TEST_FAIL:-}" = api ]; then exit 22; fi
-        printf '{"tag_name": "v0.2.0"}\n'
+        printf '{"tag_name": "%s"}\n' "$HIVE_INSTALL_TEST_VERSION"
         ;;
-    https://github.com/sperka/hive/releases/download/v0.2.0/*)
+    "https://github.com/sperka/hive/releases/download/$HIVE_INSTALL_TEST_VERSION/"*)
         name=${url##*/}
         if [ "${HIVE_TEST_FAIL:-}" = archive ] && [ "$name" != checksums.txt ]; then exit 22; fi
         cp "$HIVE_INSTALL_TEST_DIR/fixtures/$name" "$output"
@@ -43,7 +45,7 @@ esac
 SH
 chmod +x "$TEST_DIR/bin/"*
 
-printf '#!/bin/sh\necho "hive 0.2.0"\n' > "$TEST_DIR/fixtures/hive"
+printf '#!/bin/sh\necho "hive %s"\n' "${HIVE_INSTALL_TEST_VERSION#v}" > "$TEST_DIR/fixtures/hive"
 chmod +x "$TEST_DIR/fixtures/hive"
 for os in linux darwin; do
     for arch in amd64 arm64; do
@@ -74,14 +76,14 @@ assert_clean() {
 for os in Linux Darwin; do
     for arch in x86_64 aarch64 arm64; do
         HIVE_TEST_OS="$os" HIVE_TEST_ARCH="$arch" run_installer
-        [ "$("$TEST_DIR/destination/hive" --version)" = "hive 0.2.0" ]
+        [ "$("$TEST_DIR/destination/hive" --version)" = "hive ${HIVE_INSTALL_TEST_VERSION#v}" ]
         assert_clean
     done
 done
 
 # A pinned install skips the latest-release API request.
 : > "$TEST_DIR/requests"
-HIVE_VERSION=v0.2.0 run_installer
+HIVE_VERSION="$HIVE_INSTALL_TEST_VERSION" run_installer
 if grep -q 'api.github.com' "$TEST_DIR/requests"; then
     echo "Pinned install queried latest release" >&2
     exit 1

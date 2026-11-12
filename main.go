@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mdipanjan/hive/internal/cli"
 	"github.com/mdipanjan/hive/internal/components"
 	"github.com/mdipanjan/hive/internal/config"
@@ -42,8 +41,7 @@ func main() {
 	theme := styles.GetThemeByKey(cfg.Theme)
 	styles.ApplyTheme(theme)
 
-	p := tea.NewProgram(tui.New(), tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	if err := tui.Run(tui.New()); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}

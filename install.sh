@@ -45,7 +45,7 @@ if [ -z "$VERSION" ]; then
         sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p')
 fi
 [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] ||
-    fail "Invalid release version: $VERSION (expected v0.2.0, for example)"
+    fail "Invalid release version: $VERSION (expected v0.3.0, for example)"
 
 echo "Installing $BINARY $VERSION for $OS/$ARCH..."
 

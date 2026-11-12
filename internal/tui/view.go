@@ -4,7 +4,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/mdipanjan/hive/internal/components"
+	"github.com/mdipanjan/hive/internal/session"
 	"github.com/mdipanjan/hive/internal/styles"
 )
 
@@ -125,50 +127,75 @@ func renderSearchView(m Model) string {
 	return popup + "\n" + help
 }
 func renderListView(m Model) string {
-	leftColumn := lipgloss.JoinVertical(lipgloss.Left,
-		components.RenderLogo(),
-		"",
-		components.RenderHoneycomb(3, 3),
-		"",
-		components.RenderStats(m.sessions),
-	)
-
-	var rightColumn string
-	cursor := m.cursor
-	if cursor >= len(m.sessions) {
-		cursor = max(0, len(m.sessions)-1)
+	width := 100
+	if m.width > 0 {
+		width = min(width, m.width)
 	}
-
+	if width < 40 || (m.height > 0 && m.height < 12) {
+		text := ansi.Truncate("HIVE - enlarge terminal to 40 x 12", width, "")
+		return text
+	}
+	inner := width - 6
+	header := components.RenderHeader(m.sessions, inner, m.mark.Render(string(styles.ColorCyan)))
+	coreCount := max(m.cpu.LogicalCPUs, len(m.cpu.PerCore))
+	columns := components.CPUColumns(inner-4, coreCount)
+	cpuRows := max(8, 7+(coreCount+columns-1)/columns)
+	if m.height > 0 {
+		if m.height < 30 || width < 64 {
+			cpuRows = 1
+		} else {
+			cpuRows = min(cpuRows, max(5, m.height-6-lipgloss.Height(header)-12))
+		}
+	}
+	activity := components.RenderActivity(inner, m.cpu, m.cpuUsageHistory, cpuRows)
+	panelRows := 12
+	stacked := width < 64
+	if m.height > 0 {
+		available := m.height - 6 - lipgloss.Height(header) - lipgloss.Height(activity)
+		if m.err != nil {
+			available--
+		}
+		if stacked {
+			available = (available - 1) / 2
+		}
+		panelRows = min(panelRows, available)
+	}
+	if panelRows < 5 {
+		return ansi.Truncate("HIVE - enlarge terminal to show sessions", width, "")
+	}
+	cursor := max(0, min(m.cursor, len(m.sessions)-1))
+	var selected *session.Session
 	if len(m.sessions) > 0 {
-		rightColumn = lipgloss.JoinVertical(lipgloss.Left,
-			components.RenderSessions(m.sessions, cursor),
-			components.RenderDetails(m.sessions[cursor]),
-		)
+		selected = &m.sessions[cursor]
+	}
+	var panels string
+	if stacked {
+		panels = lipgloss.JoinVertical(lipgloss.Left,
+			components.RenderSessions(m.sessions, cursor, inner, panelRows), "",
+			components.RenderDetails(selected, inner, panelRows))
 	} else {
-		rightColumn = components.RenderSessions(m.sessions, cursor)
+		leftWidth := (inner - 2) / 2
+		panels = lipgloss.JoinHorizontal(lipgloss.Top,
+			components.RenderSessions(m.sessions, cursor, leftWidth, panelRows), "  ",
+			components.RenderDetails(selected, inner-leftWidth-2, panelRows))
 	}
-
-	mainContent := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, "  ", rightColumn)
-
-	contentWidth := maxLineWidth(mainContent)
-	boxWidth := contentWidth + 6
-
-	if m.width > 0 && boxWidth > m.width-2 {
-		boxWidth = m.width - 2
-	}
-
-	activity := components.RenderActivity(contentWidth, m.cpuUsageHistory)
-	fullContent := lipgloss.JoinVertical(lipgloss.Right, mainContent, "", activity)
+	fullContent := lipgloss.JoinVertical(lipgloss.Left, header, panels, activity)
 	if m.err != nil {
-		fullContent += "\n" + styles.Normal.Render("Error: "+m.err.Error())
+		// Preserve the frame even when an external command returns a long error.
+		message := strings.Join(strings.Fields(ansi.Strip("Error: "+m.err.Error())), " ")
+		fullContent += "\n" + styles.Normal.Render(ansi.Truncate(message, inner, "..."))
 	}
-
-	boxStyle := styles.OuterBox.Width(boxWidth)
-	box := boxStyle.Render(fullContent)
-
+	// The header includes its own top padding around the mark.
+	box := styles.OuterBox.PaddingTop(0).Width(width - 2).Render(fullContent)
 	help := components.RenderHelp()
+	if lipgloss.Width(help) > width {
+		help = styles.Dim.Render("j/k select  enter attach  n new  r rename  ? help  q quit")
+	}
+	help = ansi.Truncate(help, width, "")
 	if m.width > 0 && m.height > 0 {
-		box = lipgloss.Place(m.width, m.height-2, lipgloss.Center, lipgloss.Center, box)
+		// Keep the removed panel gap below the frame so centering does not
+		// move the session panels down when the dashboard becomes shorter.
+		box = lipgloss.Place(m.width, m.height-2, lipgloss.Center, lipgloss.Center, box+"\n")
 		help = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, help)
 	}
 

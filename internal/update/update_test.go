@@ -72,6 +72,7 @@ func TestUpdate(t *testing.T) {
 		wantOutput string
 	}{
 		{name: "upgrade", current: "0.1.2", wantUpdate: true},
+		{name: "minor fork upgrade", current: "0.2.0", tag: "v0.3.0", wantUpdate: true},
 		{name: "symlink", current: "v0.1.2", symlink: true, wantUpdate: true},
 		{name: "development build", current: "dev", wantUpdate: true},
 		{name: "release candidate", current: "0.2.0-rc.1", wantUpdate: true},

@@ -27,7 +27,7 @@ Managing multiple AI coding agents (Claude, Pi, Cursor) across projects gets mes
 | **Instant Switcher**  | Jump between sessions with `prefix+h` - no detach      |
 | **CLI + JSON Output** | AI agents can create/manage sessions programmatically |
 | **12 Themes**         | Match your terminal aesthetic                         |
-| **Lightweight**       | ~4MB binary, instant startup, no runtime deps         |
+| **Lightweight**       | Single binary, instant startup, no runtime deps      |
 
 ## Requirements
 
@@ -54,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/sperka/hive/main/install.sh |
   HIVE_INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
-Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.2.0` on the `bash`
+Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.3.0` on the `bash`
 command to install a particular release instead of the latest stable version.
 
 <details>
@@ -93,6 +93,29 @@ The executable's directory must be writable. For a root-owned installation, run
 Older versions without `hive update` need the installer once to gain the command.
 
 ## Usage
+
+The main dashboard is 100 terminal columns wide, including its border. A compact
+hexagon/wordmark/status header sits above Sessions and Details, with CPU activity
+below. Smaller terminals use a compact layout. CPU activity shows real usage
+history, a subdued average/peak summary, and physical/logical core counts.
+Per-logical-CPU entries show a core number and current percentage in eight columns
+when space permits, otherwise four. Core numbers run down each column before
+continuing in the next. The title, statistics, and grid share one left edge.
+Percentages use green below 50%, yellow from 50%, and red from 80%. Startup and
+unavailable samples are identified instead of drawn as zero.
+
+All terminals, including Ghostty and Kitty, use the original text hexagons by
+default. A generated image is available by explicitly enabling Kitty graphics.
+Inside tmux, graphics require the existing `allow-passthrough` option to be `on`
+or `all`; Hive does not change it. Image data is transmitted directly, so the
+optional image also works over SSH.
+
+```bash
+HIVE_GRAPHICS=off hive    # Always use the text mark
+HIVE_GRAPHICS=kitty hive  # Opt into an image in Ghostty or Kitty
+```
+
+The override requires a terminal and, inside tmux, enabled passthrough.
 
 ### TUI Mode
 

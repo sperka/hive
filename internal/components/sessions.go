@@ -8,44 +8,30 @@ import (
 )
 
 const (
-	maxNameLength      = 20
-	maxVisibleSessions = 6
+	maxNameLength = 20
 )
 
-func RenderSessions(sessions []session.Session, cursor int) string {
-	title := styles.PanelTitle.Render("SESSIONS") + "\n\n"
-	var s string
-
+func RenderSessions(sessions []session.Session, cursor, width, rows int) string {
 	if len(sessions) == 0 {
-		s = "  No sessions. Press 'n' to create one.\n"
-		return styles.Panel.Width(PanelWidth).Render(title + s)
+		return panel("SESSIONS", []string{
+			cellText("No sessions. Press n to create one.", width-4),
+		}, width, rows)
 	}
-
-	start, end := calculateWindow(len(sessions), cursor, maxVisibleSessions)
-
-	if start > 0 {
-		s += styles.Dim.Render("  ▲ "+fmt.Sprintf("%d more", start)) + "\n"
-	}
-
+	cursor = max(0, min(cursor, len(sessions)-1))
+	visible := max(1, rows-5)
+	start, end := calculateWindow(len(sessions), cursor, visible)
+	var lines []string
 	for index := start; index < end; index++ {
 		sessionItem := sessions[index]
-		name := TruncateMiddle(sessionItem.Name, maxNameLength)
-
+		name := cellText(sessionItem.Name, width-6)
 		if cursor == index {
-			line := "● " + name
-			s += styles.Logo.Render(line) + "\n"
+			lines = append(lines, styles.Logo.Render("> "+name))
 		} else {
-			icon := GetStatusIcon(sessionItem.Status)
-			line := icon + " " + name
-			s += styles.Normal.Render(line) + "\n"
+			lines = append(lines, GetStatusIcon(sessionItem.Status)+" "+styles.Normal.Render(name))
 		}
 	}
-
-	if end < len(sessions) {
-		s += styles.Dim.Render("  ▼ "+fmt.Sprintf("%d more", len(sessions)-end)) + "\n"
-	}
-
-	return styles.Panel.Width(PanelWidth).Render(title + s)
+	lines = append(lines, styles.Dim.Render(fmt.Sprintf("%d-%d / %d", start+1, end, len(sessions))))
+	return panel("SESSIONS", lines, width, rows)
 }
 
 func calculateWindow(total, cursor, maxVisible int) (int, int) {
