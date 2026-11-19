@@ -35,6 +35,7 @@ func (m Model) updateRename(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.err = err
 			return m, nil
 		}
+		m.sessionGeneration++
 		// Keep the local list accurate even if refreshing from tmux fails.
 		for i := range m.sessions {
 			if m.sessions[i].Name == m.renameName {

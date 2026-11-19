@@ -11,6 +11,9 @@ import (
 )
 
 func RenderView(m Model) string {
+	if m.app.RecoveringSessions() {
+		return renderRecoveryView(m)
+	}
 	if m.app.PickingPath() {
 		return renderFilePickerView(m)
 	}
@@ -51,12 +54,7 @@ func renderRenameView(m Model) string {
 }
 
 func renderDeleteConfirmView(m Model) string {
-	sessionName := ""
-	if len(m.sessions) > 0 {
-		sessionName = m.sessions[m.cursor].Name
-	}
-
-	popup := components.RenderDeleteConfirm(sessionName, m.deleteButton)
+	popup := components.RenderDeleteConfirm(m.deleteName, m.deleteButton)
 	help := components.RenderHelpBar([]components.HelpItem{
 		{Key: "←→", Desc: "select"},
 		{Key: "enter", Desc: "confirm"},

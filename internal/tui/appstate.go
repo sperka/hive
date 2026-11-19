@@ -14,6 +14,7 @@ const (
 	OverlayDeleteConfirm Overlay = "delete-confirm"
 	OverlayRename        Overlay = "rename"
 	OverlayPathPicker    Overlay = "path-picker"
+	OverlayRecovery      Overlay = "recovery"
 )
 
 type AppState struct {
@@ -35,6 +36,7 @@ func (s AppState) RenamingSession() bool { return s.Overlay == OverlayRename }
 func (s AppState) CreatingSession() bool {
 	return s.Screen == ScreenNew && s.Overlay == OverlayNone
 }
+func (s AppState) RecoveringSessions() bool { return s.Overlay == OverlayRecovery }
 
 func (s *AppState) ShowHelp()            { s.Overlay = OverlayHelp }
 func (s *AppState) Search()              { s.Overlay = OverlaySearch }
@@ -42,5 +44,6 @@ func (s *AppState) ConfirmDelete()       { s.Overlay = OverlayDeleteConfirm }
 func (s *AppState) RenameSession()       { s.Overlay = OverlayRename }
 func (s *AppState) PickPath()            { s.Overlay = OverlayPathPicker }
 func (s *AppState) CloseOverlay()        { s.Overlay = OverlayNone }
+func (s *AppState) RecoverSessions()     { s.Overlay = OverlayRecovery }
 func (s *AppState) StartNewSession()     { s.Screen, s.Overlay = ScreenNew, OverlayNone }
 func (s *AppState) ReturnToSessionList() { s.Screen, s.Overlay = ScreenList, OverlayNone }

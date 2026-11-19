@@ -241,6 +241,24 @@ hive switch
 
 ## Configuration
 
+Hive maintains `~/.config/hive/sessions.json` with each observed session's name,
+tool, working directory, and creation time. It updates the file when you create,
+rename, or delete a session, while the dashboard is open, and when it reads the
+session list. Sessions discovered outside Hive are saved too.
+
+When you open Hive, saved sessions that are missing from tmux appear in a recovery
+prompt. Choose **Open** to recreate a session, **Delete saved entry** to forget it,
+or **Later** to keep it for another startup. Press `esc` to postpone all remaining
+sessions. Use `tab` and `enter` to choose an action; `o`, `d`, and `l` are shortcuts.
+Deleting a session through Hive also removes its saved entry. Closing one outside
+Hive leaves it available for recovery.
+
+Recovery starts a fresh instance of the saved tool in the saved directory using
+Hive's normal session setup. It does not restore terminal history, running program
+state, command arguments, or custom windows and pane layouts. The directory and
+tool must still exist. The compact `hive switch` popup does not show recovery
+prompts. Hive does not monitor tmux while it is closed.
+
 Config file: `~/.config/hive/config.json`
 
 ```json

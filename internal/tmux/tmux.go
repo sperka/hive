@@ -22,7 +22,19 @@ func List() ([]session.Session, error) {
 	logger.Log.Debug("tmux list-sessions", "output", string(output), "err", err)
 
 	if err != nil {
-		return nil, err
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			message := strings.TrimSpace(string(exitErr.Stderr))
+			if strings.HasPrefix(message, "no server running on ") ||
+				message == "no sessions" ||
+				(strings.HasPrefix(message, "error connecting to ") &&
+					(strings.HasSuffix(message, "(No such file or directory)") ||
+						strings.HasSuffix(message, "(Connection refused)"))) {
+				return []session.Session{}, nil
+			}
+			return nil, fmt.Errorf("list tmux sessions: %w: %s", err, message)
+		}
+		return nil, fmt.Errorf("list tmux sessions: %w", err)
 	}
 
 	lines := strings.Split(string(output), "\n")

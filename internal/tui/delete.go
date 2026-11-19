@@ -28,13 +28,19 @@ func (m Model) updateDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) executeDelete() (tea.Model, tea.Cmd) {
-	if len(m.sessions) > 0 {
-		name := m.sessions[m.cursor].Name
+	if m.deleteName != "" {
+		name := m.deleteName
 		logger.Log.Debug("deleting session", "name", name)
-		_ = lifecycle.New().Delete(name)
-		m.sessions, _ = lifecycle.New().List()
-		if m.cursor >= len(m.sessions) {
-			m.cursor = max(0, len(m.sessions)-1)
+		if err := lifecycle.New().Delete(name); err != nil {
+			m.err = err
+			m.app.CloseOverlay()
+			return m, nil
+		}
+		m.sessionGeneration++
+		sessions, err := lifecycle.New().List()
+		m.err = err
+		if err == nil {
+			m.setSessions(sessions)
 		}
 	}
 	m.app.CloseOverlay()

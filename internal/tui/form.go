@@ -165,8 +165,12 @@ func (m Model) createSession() (tea.Model, tea.Cmd) {
 	}
 	logger.Log.Debug("created session", "name", createdName)
 
-	m.sessions, _ = lifecycle.New().List()
-	m.err = nil
+	m.sessionGeneration++
+	sessions, err := lifecycle.New().List()
+	m.err = err
+	if err == nil {
+		m.setSessions(sessions)
+	}
 	m.app.ReturnToSessionList()
 	return m, nil
 }

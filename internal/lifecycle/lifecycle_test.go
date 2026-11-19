@@ -21,6 +21,7 @@ func TestCreateRejectsMissingExecutableBeforeTouchingTmux(t *testing.T) {
 }
 
 func TestCreateAcceptsCustomExecutable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	bin := t.TempDir()
 	t.Setenv("PATH", bin)
 	t.Setenv("HIVE_STATE_DIR", t.TempDir())

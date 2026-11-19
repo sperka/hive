@@ -12,6 +12,7 @@ import (
 	"github.com/mdipanjan/hive/internal/logger"
 	"github.com/mdipanjan/hive/internal/metrics"
 	"github.com/mdipanjan/hive/internal/session"
+	"github.com/mdipanjan/hive/internal/state"
 	"golang.org/x/term"
 )
 
@@ -23,24 +24,29 @@ const (
 )
 
 type Model struct {
-	mode            Mode
-	width           int
-	height          int
-	sessions        []session.Session
-	cursor          int
-	app             AppState
-	form            NewSessionForm
-	searchInput     textinput.Model
-	searchResults   []int
-	searchCursor    int
-	deleteButton    int
-	renameInput     textinput.Model
-	renameName      string
-	cpuUsageHistory []float64
-	cpu             metrics.CPU
-	cpuSampler      *metrics.Sampler
-	mark            *graphics.Mark
-	err             error
+	mode               Mode
+	width              int
+	height             int
+	sessions           []session.Session
+	cursor             int
+	app                AppState
+	form               NewSessionForm
+	searchInput        textinput.Model
+	searchResults      []int
+	searchCursor       int
+	deleteButton       int
+	deleteName         string
+	renameInput        textinput.Model
+	renameName         string
+	recoverySessions   []state.Metadata
+	recoveryButton     int
+	sessionGeneration  uint64
+	refreshingSessions bool
+	cpuUsageHistory    []float64
+	cpu                metrics.CPU
+	cpuSampler         *metrics.Sampler
+	mark               *graphics.Mark
+	err                error
 }
 
 type NewSessionForm struct {
@@ -68,7 +74,7 @@ func NewSwitch() Model {
 
 func newModel(mode Mode) Model {
 	logger.Log.Debug("initializing model", "mode", mode)
-	sessions, err := lifecycle.New().List()
+	sessions, missing, err := lifecycle.New().Reconcile()
 	if err != nil {
 		logger.Log.Error("failed to list sessions", "err", err)
 	}
@@ -84,6 +90,10 @@ func newModel(mode Mode) Model {
 	if mode == ModeDashboard {
 		m.cpuSampler = metrics.NewSampler()
 		m.mark = graphics.NewMark()
+		if err == nil && len(missing) > 0 {
+			m.recoverySessions = missing
+			m.app.RecoverSessions()
+		}
 	}
 
 	if w, h, sizeErr := term.GetSize(int(os.Stdout.Fd())); sizeErr == nil && w > 0 && h > 0 {
@@ -115,7 +125,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
 	case cpuTickMsg:
+		if m.mode != ModeSwitch && !m.refreshingSessions {
+			m.refreshingSessions = true
+			return m, tea.Batch(m.sampleCPU(), m.refreshSessions())
+		}
 		return m, m.sampleCPU()
+	case sessionsRefreshedMsg:
+		m.refreshingSessions = false
+		if msg.generation != m.sessionGeneration {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+		m.setSessions(msg.sessions)
+		return m, nil
 	case cpuSampleMsg:
 		m.cpu = msg.sample
 		if msg.sample.Valid {
@@ -148,12 +173,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Quit
 		}
-		sessions, _ := lifecycle.New().List()
-		m.sessions = sessions
-		m.cursor = max(0, min(m.cursor, len(sessions)-1))
+		m.sessionGeneration++
+		sessions, err := lifecycle.New().List()
+		m.err = err
+		if err == nil {
+			m.setSessions(sessions)
+		}
 		return m, tea.ClearScreen
 
 	case tea.KeyMsg:
+		if m.app.RecoveringSessions() {
+			return m.updateRecovery(msg)
+		}
 		if m.app.Searching() {
 			return m.updateSearch(msg)
 		}

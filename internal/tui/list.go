@@ -38,6 +38,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "d":
 		if len(m.sessions) > 0 {
+			m.deleteName = m.sessions[m.cursor].Name
 			m.app.ConfirmDelete()
 			m.deleteButton = 1
 		}

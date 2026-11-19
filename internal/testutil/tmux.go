@@ -34,6 +34,7 @@ func Tmux(t *testing.T) {
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("TMUX", "")
 	t.Setenv("HIVE_STATE_DIR", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 }
 
 func TmuxCommand(t *testing.T, args ...string) string {
