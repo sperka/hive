@@ -2,13 +2,23 @@
 
 A lightweight TUI for managing tmux sessions, optimized for AI coding agents.
 
+This is the [sperka/hive](https://github.com/sperka/hive) fork of
+[mdipanjan/hive](https://github.com/mdipanjan/hive). It adds configurable tools,
+session renaming and recovery, a compact dashboard with real CPU metrics, and
+verified installation and self-updates.
+
 ![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8?style=flat&logo=go)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+Current release: [v0.4.0](https://github.com/sperka/hive/releases/tag/v0.4.0).
+See [CHANGELOG.md](CHANGELOG.md) for the complete release history from v0.1.0.
+
 <p align="center">
-  <img src="assets/demo.gif" alt="Hive Demot " width="700">
+  <img src="assets/demo.gif" alt="Original Hive dashboard demo" width="700">
 </p>
+
+The demo shows the original dashboard; the current layout is described below.
 
 ## Why Hive?
 
@@ -20,18 +30,24 @@ Managing multiple AI coding agents (Claude, Pi, Cursor) across projects gets mes
 
 ## Features
 
-| Feature               | What it solves                                        |
-| --------------------- | ----------------------------------------------------- |
-| **Unified Dashboard** | See all sessions at a glance - status, tool, path     |
-| **Quick Search**      | Find sessions instantly with `/` - no more `tmux ls`  |
-| **Instant Switcher**  | Jump between sessions with `prefix+h` - no detach      |
-| **CLI + JSON Output** | AI agents can create/manage sessions programmatically |
-| **12 Themes**         | Match your terminal aesthetic                         |
-| **Lightweight**       | Single binary, instant startup, no runtime deps      |
+| Feature | What it does |
+| ------- | ------------ |
+| **Compact Dashboard** | Shows sessions, runtime status, tool, path, and real CPU usage |
+| **Session Recovery** | Saves session setup and offers to reopen missing sessions at startup |
+| **Configurable Tools** | Lists your preferred tools and accepts custom executable names or paths |
+| **Session Renaming** | Changes names without interrupting running tools or losing their state |
+| **Search and Switcher** | Filters with `/` and switches from inside tmux with `prefix+h` |
+| **Editor Workspaces** | Opens Neovim beside a persistent shell pane |
+| **CLI + JSON Output** | Lets scripts and AI agents create, list, attach, switch, and delete sessions |
+| **Verified Updates** | Installs and updates user-owned binaries with SHA-256 verification |
+| **12 Themes** | Saves your theme and displays its name on the dashboard |
+| **Single Binary** | Runs on Linux and macOS, on amd64 and arm64 |
 
 ## Requirements
 
 - **tmux** - Terminal multiplexer
+- The tools you want to launch, installed and executable.
+- For the installer: Bash, curl, tar, and either `sha256sum` or `shasum`.
 
 ## Installation
 
@@ -56,8 +72,12 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Set `HIVE_INSTALL_DIR` to choose another user-writable directory.
-Set `HIVE_VERSION=v0.4.0` on the `bash`
-command to install a particular release instead of the latest stable version.
+To install a particular release instead of the latest stable version:
+
+```bash
+curl -fsSL https://github.com/sperka/hive/releases/download/v0.4.0/install.sh |
+  HIVE_VERSION=v0.4.0 bash
+```
 
 <details>
 <summary>Other install methods</summary>
@@ -134,8 +154,8 @@ continuing in the next. The title, statistics, and grid share one left edge.
 Percentages use green below 50%, yellow from 50%, and red from 80%. Startup and
 unavailable samples are identified instead of drawn as zero.
 The keyboard legend stays directly below the frame, with bright labels, bold
-keys, and a filled background. It wraps instead of hiding shortcuts on narrow
-terminals.
+keys, and no background fill. It wraps instead of hiding shortcuts on narrow
+terminals. The active theme name appears dimmed in the bottom-right corner.
 
 All terminals, including Ghostty and Kitty, use the original text hexagons by
 default. A generated image is available by explicitly enabling Kitty graphics.
@@ -235,7 +255,7 @@ From inside any Hive-created tmux session, press:
 prefix + h   (e.g. Ctrl+b h)
 ```
 
-This opens a centered switcher popup. Type to filter, `↑↓` to select, `enter`
+This opens a centered switcher popup. Type to filter, use up/down to select, `enter`
 to switch, `esc` to close. Because Hive uses `tmux switch-client` under the
 hood, switching is instant - no detach/reattach cycle.
 
@@ -252,7 +272,7 @@ hive switch
 > tmux bind-key h display-popup -B -w 90% -h 80% -E "hive switch"
 > ```
 
-## Configuration
+## Session Recovery
 
 Hive maintains `~/.config/hive/sessions.json` with each observed session's name,
 tool, working directory, and creation time. It updates the file when you create,
@@ -271,6 +291,8 @@ Hive's normal session setup. It does not restore terminal history, running progr
 state, command arguments, or custom windows and pane layouts. The directory and
 tool must still exist. The compact `hive switch` popup does not show recovery
 prompts. Hive does not monitor tmux while it is closed.
+
+## Configuration
 
 Config file: `~/.config/hive/config.json`
 
@@ -326,12 +348,23 @@ hive/
     cli/          # CLI commands
     components/   # UI components
     config/       # Configuration
+    graphics/     # Optional Kitty graphics
+    lifecycle/    # Session creation, renaming, deletion, and recovery
     logger/       # Logging
+    metrics/      # CPU sampling
+    runner/       # Tool execution and editor resume behavior
     session/      # Session types
+    state/        # Runtime state and saved session catalog
     styles/       # Themes & styles
+    testutil/     # Isolated tmux integration tests
     tmux/         # tmux operations
     tui/          # TUI logic
+    update/       # Release discovery and verified self-updates
   assets/         # Demo GIF
+  docs/           # Website and design notes
+  scripts/        # Installer tests
+  CHANGELOG.md    # Release history
+  RELEASING.md    # Validation, publication, and rollback
 ```
 
 ## Contributing
@@ -340,7 +373,7 @@ See [RELEASING.md](RELEASING.md) for versioning, release validation, and rollbac
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+3. Commit your changes (`git commit -m 'feat(sessions): add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing`)
 5. Open a Pull Request
 
