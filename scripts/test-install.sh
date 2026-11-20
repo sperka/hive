@@ -6,10 +6,12 @@ TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_DIR"' EXIT
 mkdir -p "$TEST_DIR/bin" "$TEST_DIR/fixtures" "$TEST_DIR/destination" "$TEST_DIR/tmp"
 export HIVE_INSTALL_TEST_DIR="$TEST_DIR"
+HIVE_INSTALL_TEST_MKTEMP=$(command -v mktemp)
+export HIVE_INSTALL_TEST_MKTEMP
 HIVE_INSTALL_TEST_VERSION=$(awk '/^## / { print "v" $2; exit }' "$PROJECT_DIR/CHANGELOG.md")
 export HIVE_INSTALL_TEST_VERSION
 
-# Only curl and uname are substituted. Downloads must use the fork's URLs.
+# Substitute downloads and platform detection; guard against system writes and sudo.
 cat > "$TEST_DIR/bin/curl" <<'SH'
 #!/bin/bash
 set -euo pipefail
@@ -48,6 +50,21 @@ case "$1" in
     -m) echo "${HIVE_TEST_ARCH:-aarch64}" ;;
 esac
 SH
+cat > "$TEST_DIR/bin/mktemp" <<'SH'
+#!/bin/bash
+case "$*" in
+    -d|"$HIVE_INSTALL_TEST_DIR"/*)
+        exec "$HIVE_INSTALL_TEST_MKTEMP" "$@"
+        ;;
+    *) echo "Installer attempted to stage outside the test directory: $*" >&2; exit 1 ;;
+esac
+SH
+cat > "$TEST_DIR/bin/sudo" <<'SH'
+#!/bin/bash
+touch "$HIVE_INSTALL_TEST_DIR/sudo-called"
+echo "The installer must not request elevated permissions" >&2
+exit 1
+SH
 chmod +x "$TEST_DIR/bin/"*
 
 printf '#!/bin/sh\necho "hive %s"\n' "${HIVE_INSTALL_TEST_VERSION#v}" > "$TEST_DIR/fixtures/hive"
@@ -77,6 +94,28 @@ assert_clean() {
     [ -z "$(find "$TEST_DIR/tmp" -mindepth 1 -print -quit)" ]
     [ -z "$(find "$TEST_DIR/destination" -name '.hive-install.*' -print -quit)" ]
 }
+
+# The default install belongs to the current user, including homes with spaces.
+env -u HIVE_INSTALL_DIR HOME="$TEST_DIR/home with spaces" \
+    PATH="$TEST_DIR/bin:$PATH" TMPDIR="$TEST_DIR/tmp" \
+    bash "$PROJECT_DIR/install.sh"
+[ "$("$TEST_DIR/home with spaces/.local/bin/hive" --version)" = "hive ${HIVE_INSTALL_TEST_VERSION#v}" ]
+[ ! -e "$TEST_DIR/sudo-called" ]
+
+# An explicitly unwritable destination must fail without asking for sudo.
+mkdir "$TEST_DIR/readonly"
+chmod 555 "$TEST_DIR/readonly"
+if [ ! -w "$TEST_DIR/readonly" ]; then
+    if PATH="$TEST_DIR/bin:$PATH" TMPDIR="$TEST_DIR/tmp" \
+        HIVE_INSTALL_DIR="$TEST_DIR/readonly" bash "$PROJECT_DIR/install.sh"; then
+        echo "Expected an unwritable install directory to fail" >&2
+        exit 1
+    fi
+    [ ! -e "$TEST_DIR/sudo-called" ]
+    [ ! -e "$TEST_DIR/readonly/hive" ]
+fi
+chmod 755 "$TEST_DIR/readonly"
+assert_clean
 
 for os in Linux Darwin; do
     for arch in x86_64 aarch64 arm64; do

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.0
+
+- Save each observed session's name, tool, working directory, and creation time
+  in `~/.config/hive/sessions.json`, including sessions created outside Hive.
+- Offer to reopen missing sessions at startup, delete their saved entries, or
+  defer recovery until later. Reopened sessions start fresh instances of their
+  saved tools in their saved directories.
+- Keep saved session entries in sync when creating, renaming, or deleting
+  sessions, and retain them when the tmux server stops.
+- Install to `~/.local/bin` by default without sudo, and explain how to migrate
+  older system installations to a user-writable directory for future updates.
+
 ## 0.3.2
 
 - Remove the keyboard legend's background fill while keeping its text bright.

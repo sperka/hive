@@ -84,7 +84,7 @@ func (u updater) run(ctx context.Context, currentVersion string, checkOnly bool,
 	}
 	staged, err := os.CreateTemp(filepath.Dir(target), ".hive-update-*")
 	if err != nil {
-		return fmt.Errorf("cannot update %s: %w; use an account with write access or reinstall in a user-writable directory", target, err)
+		return fmt.Errorf("cannot update %s: %w; reinstall Hive in ~/.local/bin and put that directory first on PATH", target, err)
 	}
 	defer os.Remove(staged.Name())
 	defer staged.Close()

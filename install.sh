@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPO="sperka/hive"
 BINARY="hive"
-INSTALL_DIR="${HIVE_INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${HIVE_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${HIVE_VERSION:-}"
 
 fail() {
@@ -61,18 +61,10 @@ ARCHIVE="${BINARY}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/$REPO/releases/download/$VERSION"
 TMP_DIR=$(mktemp -d)
 STAGED=""
-USE_SUDO=0
-run_install() {
-    if [ "$USE_SUDO" = 1 ]; then
-        sudo "$@"
-    else
-        "$@"
-    fi
-}
 cleanup() {
     rm -rf "$TMP_DIR"
     if [ -n "$STAGED" ]; then
-        run_install rm -f "$STAGED"
+        rm -f "$STAGED"
     fi
 }
 trap cleanup EXIT
@@ -93,21 +85,16 @@ tar -xOzf "$TMP_DIR/$ARCHIVE" "$BINARY" > "$TMP_DIR/$BINARY"
     fail "Release archive does not contain a regular Hive binary"
 [ -s "$TMP_DIR/$BINARY" ] || fail "Release archive contains an empty Hive binary"
 
-# Create user-owned destinations without sudo where possible.
-if [ ! -d "$INSTALL_DIR" ]; then
-    mkdir -p "$INSTALL_DIR" 2>/dev/null || true
-fi
-if [ ! -w "$INSTALL_DIR" ]; then
-    command -v sudo >/dev/null 2>&1 ||
-        fail "Cannot write to $INSTALL_DIR; set HIVE_INSTALL_DIR to a writable directory"
-    USE_SUDO=1
-    run_install mkdir -p "$INSTALL_DIR"
-fi
+# Installation and future updates run with the current user's permissions.
+mkdir -p "$INSTALL_DIR" 2>/dev/null ||
+    fail "Cannot create $INSTALL_DIR; set HIVE_INSTALL_DIR to a user-writable directory"
+[ -w "$INSTALL_DIR" ] ||
+    fail "Cannot write to $INSTALL_DIR; set HIVE_INSTALL_DIR to a user-writable directory"
 
 # Stage in the destination directory so the final rename is atomic.
-STAGED=$(run_install mktemp "$INSTALL_DIR/.hive-install.XXXXXX")
-run_install install -m 755 "$TMP_DIR/$BINARY" "$STAGED"
-run_install mv -f "$STAGED" "$INSTALL_DIR/$BINARY"
+STAGED=$(mktemp "$INSTALL_DIR/.hive-install.XXXXXX")
+install -m 755 "$TMP_DIR/$BINARY" "$STAGED"
+mv -f "$STAGED" "$INSTALL_DIR/$BINARY"
 STAGED=""
 
 echo "Installed $BINARY to $INSTALL_DIR/$BINARY"
@@ -115,5 +102,5 @@ echo "Run 'hive' to start"
 echo "For future updates, run 'hive update'"
 case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;
-    *) echo "Add $INSTALL_DIR to your PATH to run hive" ;;
+    *) echo "Put $INSTALL_DIR first on your PATH to run hive" ;;
 esac

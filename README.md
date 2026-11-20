@@ -44,17 +44,19 @@ curl -fsSL https://github.com/sperka/hive/releases/latest/download/install.sh | 
 Then run: `hive`
 
 The installer downloads a release from `sperka/hive`, verifies its SHA-256
-checksum, and installs to `/usr/local/bin` (using sudo if needed). Rerun it to
-upgrade an older Hive installation that does not yet have `hive update`.
+checksum, and installs to `~/.local/bin` as your user. Installation and updates
+do not use sudo. Rerun the installer to upgrade an older Hive installation that
+does not yet have `hive update`.
 
-To install without sudo:
+Put `~/.local/bin` before system directories on your `PATH`. Add this to your
+shell configuration if needed:
 
 ```bash
-curl -fsSL https://github.com/sperka/hive/releases/latest/download/install.sh |
-  HIVE_INSTALL_DIR="$HOME/.local/bin" bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Ensure that directory is on your `PATH`. Set `HIVE_VERSION=v0.3.2` on the `bash`
+Set `HIVE_INSTALL_DIR` to choose another user-writable directory.
+Set `HIVE_VERSION=v0.4.0` on the `bash`
 command to install a particular release instead of the latest stable version.
 
 <details>
@@ -67,7 +69,8 @@ git clone https://github.com/sperka/hive.git
 cd hive
 mise install
 mise exec -- make build
-sudo mv hive /usr/local/bin/
+mkdir -p "$HOME/.local/bin"
+install -m 755 hive "$HOME/.local/bin/hive"
 ```
 
 The Go module retains the upstream import path. Use the checkout above to build
@@ -92,20 +95,30 @@ executable, including when launched through a symlink. Config and tmux sessions
 are preserved. Reopen Hive after updating. Equal or newer installed versions are
 left in place; development builds can update to the latest stable release.
 
-The executable's directory must be writable. For a root-owned installation, run
-`sudo "$(command -v hive)" update`, or install in a user-writable directory.
-Older versions without `hive update` need the installer once to gain the command.
+The executable's directory must be writable by your user. To migrate an older
+installation from `/usr/local/bin`, install a user-owned copy:
 
-If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.3.2
+```bash
+curl -fsSL https://github.com/sperka/hive/releases/latest/download/install.sh |
+  HIVE_INSTALL_DIR="$HOME/.local/bin" bash
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+hive --version
+```
+
+Future `hive update` commands update the user-owned copy. The old system copy
+can stay in place. Older versions without `hive update` also use the installer
+once to gain the command.
+
+If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.4.0
 with the release-hosted installer once:
 
 ```bash
-curl -fsSL https://github.com/sperka/hive/releases/download/v0.3.2/install.sh |
-  HIVE_VERSION=v0.3.2 bash
+curl -fsSL https://github.com/sperka/hive/releases/download/v0.4.0/install.sh |
+  HIVE_VERSION=v0.4.0 HIVE_INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
-The installer requests sudo when `/usr/local/bin` needs it. Future updates use
-`hive update` (with sudo for a root-owned installation). A 403 from the release
+Future updates use `hive update`. A 403 from the release
 download itself still requires checking that machine's network or proxy access
 to GitHub; changing the updater cannot override a network block.
 
