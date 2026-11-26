@@ -25,7 +25,12 @@ func cellText(text string, width int) string {
 // panel's dimensions include its border and padding.
 func panel(title string, lines []string, width, height int) string {
 	inner := max(1, width-4)
-	content := []string{styles.PanelTitle.Render(cellText(title, inner)), ""}
+	return panelWithTitle(styles.PanelTitle.Render(cellText(title, inner)), lines, width, height)
+}
+
+func panelWithTitle(renderedTitle string, lines []string, width, height int) string {
+	inner := max(1, width-4)
+	content := []string{ansi.Truncate(renderedTitle, inner, "..."), ""}
 	for _, line := range lines {
 		if len(content) >= height-2 {
 			break

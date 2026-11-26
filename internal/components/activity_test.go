@@ -10,6 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/mdipanjan/hive/internal/metrics"
+	"github.com/mdipanjan/hive/internal/styles"
+	"github.com/muesli/termenv"
 )
 
 func TestActivityShowsCoreCountsAndHistorySummary(t *testing.T) {
@@ -152,6 +154,59 @@ func TestCompactActivityRetainsCounts(t *testing.T) {
 	if lipgloss.Height(view) != 1 || lipgloss.Width(view) > 74 ||
 		!strings.Contains(ansi.Strip(view), "8 logical CPUs") {
 		t.Fatalf("compact CPU summary lost counts or overflowed: %q", view)
+	}
+}
+
+func TestActivityShowsMacCoreBreakdown(t *testing.T) {
+	sample := metrics.CPU{Valid: true, PhysicalCores: 16, LogicalCPUs: 16, CoreGroups: []metrics.CoreGroup{
+		{Name: "Performance", Count: 12}, {Name: "Efficiency", Count: 4},
+	}}
+	for _, tt := range []struct {
+		width, rows int
+		want        string
+	}{
+		{94, 8, "16 cores (12 performance + 4 efficiency) / 16 logical CPUs"},
+		{58, 1, "12 performance + 4 efficiency"},
+		{34, 1, "12P + 4E"},
+	} {
+		view := ansi.Strip(RenderActivity(tt.width, sample, nil, tt.rows))
+		if !strings.Contains(view, tt.want) || lipgloss.Width(view) > tt.width {
+			t.Errorf("width %d: expected %q in %q", tt.width, tt.want, view)
+		}
+	}
+}
+
+func TestActivityMatchesCoreLabelColorsToSummary(t *testing.T) {
+	previous := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	t.Cleanup(func() { lipgloss.SetColorProfile(previous) })
+	sample := metrics.CPU{
+		Valid: true, LogicalCPUs: 2, PhysicalCores: 2, PerCore: []float64{95, 5},
+		CoreGroups: []metrics.CoreGroup{{Name: "Performance", Count: 1}, {Name: "Efficiency", Count: 1}},
+		CoreTypes:  map[int]string{0: "Efficiency", 1: "Performance"},
+	}
+	full := RenderActivity(94, sample, nil, 8)
+	compact := RenderActivity(34, sample, nil, 1)
+	for _, tc := range []struct {
+		color                       lipgloss.Color
+		label, summary, abbreviated string
+	}{
+		{lipgloss.Color("14"), "#1 ", "1 efficiency", "1E"},
+		{lipgloss.Color("13"), "#2 ", "1 performance", "1P"},
+	} {
+		style := styles.Normal.Bold(true).Foreground(tc.color)
+		for _, text := range []string{tc.label, tc.summary} {
+			if !strings.Contains(full, style.Render(text)) {
+				t.Errorf("missing matching core color for %q", text)
+			}
+		}
+		if !strings.Contains(compact, style.Render(tc.abbreviated)) {
+			t.Errorf("missing compact core color for %q", tc.abbreviated)
+		}
+	}
+	sample.CoreTypes = nil
+	if !strings.Contains(RenderActivity(94, sample, nil, 8), styles.Normal.Render("#1 ")) {
+		t.Error("unmapped CPU should use the normal label style")
 	}
 }
 

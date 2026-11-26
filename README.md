@@ -148,6 +148,10 @@ The main dashboard is 100 terminal columns wide, including its border. A compact
 hexagon/wordmark/status header sits above Sessions and Details, with CPU activity
 below. Smaller terminals use a compact layout. CPU activity shows real usage
 history, a subdued average/peak summary, and physical/logical core counts.
+On Macs that report multiple CPU core types, the summary shows the count of each
+type, such as `12 performance + 4 efficiency` or `12P + 4E` in a narrow terminal.
+When macOS identifies each logical CPU, its `#` label matches the summary color:
+magenta for performance and cyan for efficiency.
 Per-logical-CPU entries show a core number and current percentage in eight columns
 when space permits, otherwise four. Core numbers run down each column before
 continuing in the next. The title, statistics, and grid share one left edge.

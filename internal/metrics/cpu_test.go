@@ -5,8 +5,18 @@ import (
 	"math"
 	"testing"
 
-	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v4/cpu"
 )
+
+func TestSamplerReadsHostCounters(t *testing.T) {
+	sample, err := NewSampler().Sample()
+	if err != nil {
+		t.Fatalf("read host CPU counters: %v", err)
+	}
+	if sample.LogicalCPUs == 0 || len(sample.PerCore) != sample.LogicalCPUs {
+		t.Fatalf("missing per-CPU counters: %+v", sample)
+	}
+}
 
 func TestSamplerUsesCounterDeltas(t *testing.T) {
 	snapshots := [][]cpu.TimesStat{

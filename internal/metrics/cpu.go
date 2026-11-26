@@ -5,13 +5,20 @@ import (
 	"math"
 	"runtime"
 
-	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v4/cpu"
 )
+
+type CoreGroup struct {
+	Name  string
+	Count int
+}
 
 type CPU struct {
 	Usage         float64
 	PerCore       []float64
 	PhysicalCores int
+	CoreGroups    []CoreGroup
+	CoreTypes     map[int]string // macOS core type by zero-based logical CPU ID
 	LogicalCPUs   int
 	Valid         bool
 	Unavailable   bool
@@ -20,10 +27,12 @@ type CPU struct {
 // Sampler compares consecutive counters; its first sample is deliberately unmeasured.
 // A dashboard owns one sampler and runs its commands sequentially.
 type Sampler struct {
-	read     func() ([]cpu.TimesStat, error)
-	previous []cpu.TimesStat
-	physical int
-	logical  int
+	read      func() ([]cpu.TimesStat, error)
+	previous  []cpu.TimesStat
+	physical  int
+	logical   int
+	groups    []CoreGroup
+	coreTypes map[int]string
 }
 
 func NewSampler() *Sampler {
@@ -32,14 +41,18 @@ func NewSampler() *Sampler {
 	if logical <= 0 {
 		logical = runtime.NumCPU()
 	}
+	groups, coreTypes := hostCoreGroups()
 	return &Sampler{
-		read:     func() ([]cpu.TimesStat, error) { return cpu.Times(true) },
-		physical: physical, logical: logical,
+		read:      func() ([]cpu.TimesStat, error) { return cpu.Times(true) },
+		physical:  physical,
+		logical:   logical,
+		groups:    groups,
+		coreTypes: coreTypes,
 	}
 }
 
 func (s *Sampler) Sample() (CPU, error) {
-	result := CPU{PhysicalCores: s.physical, LogicalCPUs: s.logical}
+	result := CPU{PhysicalCores: s.physical, LogicalCPUs: s.logical, CoreGroups: s.groups, CoreTypes: s.coreTypes}
 	current, err := s.read()
 	if err != nil || len(current) == 0 {
 		s.previous = nil

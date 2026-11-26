@@ -30,20 +30,16 @@ func RenderActivity(width int, sample metrics.CPU, history []float64, detailRows
 	} else if sample.Valid {
 		state = fmt.Sprintf("CPU  %.1f%%", sample.Usage)
 	}
-	counts := fmt.Sprintf("%d logical CPUs", sample.LogicalCPUs)
-	if sample.PhysicalCores > 0 {
-		counts = fmt.Sprintf("%d cores / %s", sample.PhysicalCores, counts)
-	}
-	if sample.LogicalCPUs == 0 {
-		counts = "core count unavailable"
-	}
 	summaryStyle := styles.Normal.Faint(true)
 	if detailRows < 5 {
-		return summaryStyle.Render(cellText(state+"  |  "+counts, width))
+		prefix := state + "  |  "
+		counts := cpuCounts(sample, width-lipgloss.Width(prefix), summaryStyle)
+		return ansi.Truncate(summaryStyle.Render(prefix)+counts, width, "...")
 	}
 	inner := width - 4
+	counts := cpuCounts(sample, inner-lipgloss.Width(state)-1, styles.PanelTitle)
 	gap := max(1, inner-lipgloss.Width(state)-lipgloss.Width(counts))
-	title := state + strings.Repeat(" ", gap) + counts
+	title := styles.PanelTitle.Render(state) + strings.Repeat(" ", gap) + counts
 	var lines []string
 	if !sample.Valid {
 		message := "Collecting real CPU counters..."
@@ -51,7 +47,7 @@ func RenderActivity(width int, sample metrics.CPU, history []float64, detailRows
 			message = "CPU counters unavailable; waiting for the next sample."
 		}
 		lines = append(lines, styles.Normal.Render(cellText(message, inner)))
-		return panel(title, lines, width, detailRows)
+		return panelWithTitle(title, lines, width, detailRows)
 	}
 	if len(history) > 0 {
 		var sum, peak float64
@@ -70,7 +66,7 @@ func RenderActivity(width int, sample metrics.CPU, history []float64, detailRows
 	}
 	available := max(0, detailRows-4-len(lines))
 	if available == 0 || len(sample.PerCore) == 0 {
-		return panel(title, lines, width, detailRows)
+		return panelWithTitle(title, lines, width, detailRows)
 	}
 	coreCount := max(sample.LogicalCPUs, len(sample.PerCore))
 	columns := min(CPUColumns(inner, coreCount), len(sample.PerCore))
@@ -94,7 +90,8 @@ func RenderActivity(width int, sample metrics.CPU, history []float64, detailRows
 				if i == visible-1 && len(sample.PerCore) > visible {
 					text = styles.Normal.Render(fmt.Sprintf("+%d more", len(sample.PerCore)-i))
 				} else {
-					text = styles.Normal.Render(fmt.Sprintf("#%-*d ", digits, i+1))
+					labelStyle := coreTypeStyle(sample.CoreTypes[i], styles.Normal)
+					text = labelStyle.Render(fmt.Sprintf("#%-*d ", digits, i+1))
 					if math.IsNaN(sample.PerCore[i]) {
 						text += styles.Normal.Render("   --")
 					} else {
@@ -119,7 +116,55 @@ func RenderActivity(width int, sample metrics.CPU, history []float64, detailRows
 		}
 		lines = append(lines, strings.Join(cells, ""))
 	}
-	return panel(title, lines, width, detailRows)
+	return panelWithTitle(title, lines, width, detailRows)
+}
+
+func coreTypeStyle(name string, fallback lipgloss.Style) lipgloss.Style {
+	switch strings.ToLower(name) {
+	case "performance":
+		return styles.Normal.Foreground(lipgloss.Color("13")).Bold(true)
+	case "efficiency":
+		return styles.Normal.Foreground(lipgloss.Color("14")).Bold(true)
+	default:
+		return fallback
+	}
+}
+
+func cpuCounts(sample metrics.CPU, width int, base lipgloss.Style) string {
+	logical := fmt.Sprintf("%d logical CPUs", sample.LogicalCPUs)
+	if len(sample.CoreGroups) > 0 {
+		var names, short []string
+		for _, group := range sample.CoreGroups {
+			name := cellText(strings.ToLower(group.Name), len(group.Name))
+			style := coreTypeStyle(name, base)
+			label := fmt.Sprintf("%d %s", group.Count, name)
+			names = append(names, style.Render(label))
+			switch name {
+			case "performance":
+				label = fmt.Sprintf("%dP", group.Count)
+			case "efficiency":
+				label = fmt.Sprintf("%dE", group.Count)
+			}
+			short = append(short, style.Render(label))
+		}
+		separator := base.Render(" + ")
+		breakdown := strings.Join(names, separator)
+		full := base.Render(fmt.Sprintf("%d cores (", sample.PhysicalCores)) + breakdown + base.Render(") / "+logical)
+		if sample.PhysicalCores > 0 && sample.LogicalCPUs > 0 && lipgloss.Width(full) <= width {
+			return full
+		}
+		if lipgloss.Width(breakdown) <= width {
+			return breakdown
+		}
+		return strings.Join(short, separator)
+	}
+	if sample.LogicalCPUs == 0 {
+		return base.Render("core count unavailable")
+	}
+	if sample.PhysicalCores > 0 {
+		return base.Render(fmt.Sprintf("%d cores / %s", sample.PhysicalCores, logical))
+	}
+	return base.Render(logical)
 }
 
 func usageGraph(history []float64, width, height int, scale float64) []string {
