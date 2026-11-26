@@ -11,7 +11,7 @@ verified installation and self-updates.
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-Current release: [v0.4.0](https://github.com/sperka/hive/releases/tag/v0.4.0).
+Current release: [v0.4.1](https://github.com/sperka/hive/releases/tag/v0.4.1).
 See [CHANGELOG.md](CHANGELOG.md) for the complete release history from v0.1.0.
 
 <p align="center">
@@ -75,8 +75,8 @@ Set `HIVE_INSTALL_DIR` to choose another user-writable directory.
 To install a particular release instead of the latest stable version:
 
 ```bash
-curl -fsSL https://github.com/sperka/hive/releases/download/v0.4.0/install.sh |
-  HIVE_VERSION=v0.4.0 bash
+curl -fsSL https://github.com/sperka/hive/releases/download/v0.4.1/install.sh |
+  HIVE_VERSION=v0.4.1 bash
 ```
 
 <details>
@@ -130,12 +130,12 @@ Future `hive update` commands update the user-owned copy. The old system copy
 can stay in place. Older versions without `hive update` also use the installer
 once to gain the command.
 
-If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.4.0
+If an older updater returns HTTP 403 from `api.github.com`, bootstrap v0.4.1
 with the release-hosted installer once:
 
 ```bash
-curl -fsSL https://github.com/sperka/hive/releases/download/v0.4.0/install.sh |
-  HIVE_VERSION=v0.4.0 HIVE_INSTALL_DIR="$HOME/.local/bin" bash
+curl -fsSL https://github.com/sperka/hive/releases/download/v0.4.1/install.sh |
+  HIVE_VERSION=v0.4.1 HIVE_INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
 Future updates use `hive update`. A 403 from the release

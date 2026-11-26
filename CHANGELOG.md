@@ -1,10 +1,19 @@
 # Changelog
 
-Release history from the v0.1.0 baseline through v0.4.0, reconstructed from the
+Release history from the v0.1.0 baseline through v0.4.1, reconstructed from the
 repository's commits and release tags. Versions 0.1.0-0.1.2 are inherited from
 [upstream Hive](https://github.com/mdipanjan/hive). Fork-specific development
 first shipped in 0.2.0, together with upstream's subsequent lifecycle and
 session-switcher work. Each comparison links to the full set of changes.
+
+## 0.4.1
+
+[Changes since 0.4.0](https://github.com/sperka/hive/compare/v0.4.0...v0.4.1)
+
+- Restore live CPU usage and per-core percentages in macOS release builds.
+- Show performance and efficiency core counts on Macs that report both types.
+- Match each verified core number to its summary label using magenta for performance
+  and cyan for efficiency. Load percentages keep their green, yellow, and red scale.
 
 ## 0.4.0
 
